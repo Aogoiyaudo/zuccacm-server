@@ -27,15 +27,15 @@ func init() {
 
 // getContest return contest info and standing
 func getContest(w http.ResponseWriter, r *http.Request) {
-	type row struct {
+	type Row struct {
 		Id             string          `json:"id"`
 		Name           string          `json:"name"`
 		Solved         int             `json:"solved"`
 		ProblemResults []problemResult `json:"problem_results"`
 	}
 	type standing struct {
-		Team  row   `json:"team"`
-		Users []row `json:"users"`
+		Team  Row   `json:"team"`
+		Users []Row `json:"users"`
 	}
 	var data struct {
 		Contest   db.Contest `json:"contest"`
@@ -43,66 +43,55 @@ func getContest(w http.ResponseWriter, r *http.Request) {
 	}
 	id := getParamIntURL(r, "id")
 	ctx := r.Context()
-	data.Contest = db.GetContestById(ctx, id)
-	mpIndex := make(map[string]int)
-	for i, p := range data.Contest.Problems {
-		mpIndex[p.Index] = i
-	}
-	teams := db.GetTeamsInContest(ctx, id)
-	mpUser := make(map[string]*row)
-	mpTeam := make(map[int]*row)
-	for _, t := range teams {
-		mpTeam[t.Id] = &row{
-			Id:             strconv.Itoa(t.Id),
-			Name:           t.Name,
-			ProblemResults: make([]problemResult, len(data.Contest.Problems)),
-		}
-		for _, u := range t.Users {
-			mpUser[u.Username] = &row{
-				Id:             u.Username,
-				Name:           u.Nickname,
-				ProblemResults: make([]problemResult, len(data.Contest.Problems)),
-			}
-		}
-	}
-	for _, v := range mpUser {
-		for i := range v.ProblemResults {
-			v.ProblemResults[i].AcceptedTime = -1
-		}
-	}
-	for _, v := range mpTeam {
-		for i := range v.ProblemResults {
-			v.ProblemResults[i].AcceptedTime = -1
-		}
-	}
+
 	sub := db.GetSubmissionsInContest(ctx, id)
+	type Key struct {
+		Username string
+		OjId     int
+		Pid      string
+	}
+	mpSub := make(map[Key][]submissionInfo)
 	for _, s := range sub {
-		i := mpIndex[s.Index]
-		mpUser[s.Username].ProblemResults[i].Submissions = append(mpUser[s.Username].ProblemResults[i].Submissions, submissionInfo{
-			IsAccepted: s.IsAccepted,
-			CreateTime: db.Datetime(s.CreateTime),
-		})
-		if mpUser[s.Username].ProblemResults[i].AcceptedTime != -1 {
-			continue
-		}
-		if s.IsAccepted {
-			t := (s.CreateTime.Unix() - time.Time(data.Contest.StartTime).Unix()) / 60
-			mpUser[s.Username].ProblemResults[i].AcceptedTime = int(t)
-			mpUser[s.Username].Solved++
-		} else {
-			mpUser[s.Username].ProblemResults[i].Dirt++
-		}
+		key := Key{s.Username, s.OjId, s.Pid}
+		mpSub[key] = append(mpSub[key], submissionInfo{s.IsAccepted, s.CreateTime})
 	}
 	data.Standings = make([]standing, 0)
+
+	contest := db.GetContestById(ctx, id)
+	teams := db.GetTeamsInContest(ctx, id)
 	for _, t := range teams {
-		var x standing
-		x.Team = *mpTeam[t.Id]
+		x := standing{
+			Team: Row{
+				Id:             strconv.Itoa(t.Id),
+				Name:           t.Name,
+				ProblemResults: make([]problemResult, len(contest.Problems)),
+			},
+			Users: make([]Row, 0),
+		}
+		// init team Row
+		for i := range contest.Problems {
+			x.Team.ProblemResults[i] = calcProblemResult(nil, contest.StartTime, contest.Duration)
+		}
 		for _, u := range t.Users {
-			y := *mpUser[u.Username]
-			x.Users = append(x.Users, y)
-			for i, pr := range y.ProblemResults {
+			uRow := Row{
+				Id:             u.Username,
+				Name:           u.Nickname,
+				ProblemResults: make([]problemResult, len(contest.Problems)),
+			}
+			for i, p := range contest.Problems {
+				key := Key{u.Username, p.OjId, p.Pid}
+				uRow.ProblemResults[i] = calcProblemResult(mpSub[key], contest.StartTime, contest.Duration)
+			}
+			for _, pr := range uRow.ProblemResults {
+				if pr.AcceptedTime != -1 {
+					uRow.Solved++
+				}
+			}
+			// upd team Row
+			for i, pr := range uRow.ProblemResults {
 				x.Team.ProblemResults[i] = maxResult(x.Team.ProblemResults[i], pr)
 			}
+			x.Users = append(x.Users, uRow)
 		}
 		for _, pr := range x.Team.ProblemResults {
 			if pr.AcceptedTime != -1 {
@@ -124,6 +113,7 @@ func getContest(w http.ResponseWriter, r *http.Request) {
 	sort.SliceStable(data.Standings, func(i, j int) bool {
 		return data.Standings[i].Team.Solved > data.Standings[j].Team.Solved
 	})
+	data.Contest = contest
 	dataResponse(w, data)
 }
 
@@ -164,15 +154,15 @@ func getContestGroups(w http.ResponseWriter, r *http.Request) {
 
 func getContests(w http.ResponseWriter, r *http.Request) {
 	id := getParamIntURL(r, "id")
-	begin := getParamTime(r, "begin_time", defaultBeginTime)
-	end := getParamTime(r, "end_time", defaultEndTime).Add(time.Hour * 24)
+	begin := getParamDate(r, "begin_time", defaultBeginTime)
+	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
 	dataResponse(w, db.GetContests(r.Context(), id, begin, end))
 }
 
 func getContestGroupOverview(w http.ResponseWriter, r *http.Request) {
 	id := getParamIntURL(r, "id")
-	begin := getParamTime(r, "begin_time", defaultBeginTime)
-	end := getParamTime(r, "end_time", defaultEndTime).Add(time.Hour * 24)
+	begin := getParamDate(r, "begin_time", defaultBeginTime)
+	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
 	ctx := r.Context()
 	userGroup := db.GetOfficialUsers(ctx, false)
 	type Data struct {

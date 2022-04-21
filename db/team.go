@@ -41,8 +41,11 @@ func GetTeamBySelf(ctx context.Context, username string) (ret Team) {
 
 // GetTeamsInContest return teams (with users) in this contest
 func GetTeamsInContest(ctx context.Context, contestId int) []Team {
-	query := `SELECT id AS team_id, name AS team_name, is_self, user.username AS username, nickname FROM team, team_user_rel, contest_team_rel, user
-WHERE team_user_rel.team_id = contest_team_rel.team_id AND team.id = team_user_rel.team_id AND user.username = team_user_rel.username
+	query := `SELECT id AS team_id, name AS team_name, is_self, user.username AS username, nickname
+FROM team, team_user_rel, contest_team_rel, user
+WHERE team_user_rel.team_id = contest_team_rel.team_id
+AND team.id = team_user_rel.team_id
+AND user.username = team_user_rel.username
 AND contest_id = ?`
 	var data []struct {
 		TeamId   int    `db:"team_id"`

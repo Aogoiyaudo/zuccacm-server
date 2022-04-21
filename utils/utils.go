@@ -1,6 +1,9 @@
 package utils
 
-import "path"
+import (
+	"path"
+	"time"
+)
 
 func SimplePath(file, root string) string {
 	tmp := file
@@ -18,4 +21,16 @@ func IsLocalFile(file, root string) bool {
 		file = file[:len(file)-len(path.Base(file))]
 	}
 	return false
+}
+
+func SubDays(begin, end time.Time) int {
+	return int(end.Sub(begin).Hours()) / 24
+}
+
+func Max(x, y int) int {
+	if x < y {
+		return y
+	} else {
+		return x
+	}
 }

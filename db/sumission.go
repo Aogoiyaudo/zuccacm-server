@@ -68,20 +68,37 @@ func AddSubmission(ctx context.Context, s []Submission) {
 		si.Username = mp[k]
 		data = append(data, *si.dbType())
 	}
-	mustNamedExec(ctx, "INSERT IGNORE INTO submission(username, oj_id, sid, pid, is_accepted, create_time) VALUES(:username, :oj_id, :sid, :pid, :is_accepted, :create_time)", data)
+	query := `INSERT IGNORE INTO submission(username, oj_id, sid, pid, is_accepted, create_time)
+VALUES(:username, :oj_id, :sid, :pid, :is_accepted, :create_time)`
+	mustNamedExec(ctx, query, data)
 }
 
 // GetSubmissionsInContest return submissions from team_user in this contest
-func GetSubmissionsInContest(ctx context.Context, contestId int) (ret []struct {
-	Username   string    `db:"username"`
-	Index      string    `db:"index"`
-	IsAccepted bool      `db:"is_accepted"`
-	CreateTime time.Time `db:"create_time"`
-}) {
-	query := `SELECT submission.username AS username, ` + "`index`" + `, is_accepted, create_time FROM submission, contest_problem
-WHERE submission.oj_id = contest_problem.oj_id AND submission.pid = contest_problem.pid AND contest_problem.contest_id = ? AND username IN
-(SELECT DISTINCT username FROM team_user_rel, contest_team_rel WHERE team_user_rel.team_id = contest_team_rel.team_id AND contest_id = ?)
+func GetSubmissionsInContest(ctx context.Context, contestId int) []Submission {
+	query := `
+SELECT submission.username AS username, is_accepted, create_time, submission.oj_id AS oj_id, submission.pid AS pid
+FROM submission,
+     contest_problem
+WHERE submission.oj_id = contest_problem.oj_id
+  AND submission.pid = contest_problem.pid
+  AND contest_problem.contest_id = ?
+  AND username IN (SELECT DISTINCT username
+                   FROM team_user_rel,
+                        contest_team_rel
+                   WHERE team_user_rel.team_id = contest_team_rel.team_id
+                     AND contest_id = ?)
 ORDER BY create_time`
+	ret := make([]Submission, 0)
 	mustSelect(ctx, &ret, query, contestId, contestId)
-	return
+	return ret
+}
+
+func GetSubmissionByUsername(ctx context.Context, username string, begin, end time.Time) []Submission {
+	query := `SELECT * FROM submission
+WHERE is_accepted AND username=?
+AND create_time BETWEEN ? AND ?
+ORDER BY create_time`
+	ret := make([]Submission, 0)
+	mustSelect(ctx, &ret, query, username, begin, end)
+	return ret
 }

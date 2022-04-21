@@ -8,15 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// SimpleUser hide some private info, such like id_card, phone
-type SimpleUser struct {
-	Username string `json:"username" json:"username"`
-	Nickname string `json:"nickname" json:"nickname"`
-	CfRating int    `json:"cf_rating" json:"cf_rating"`
-	IsEnable bool   `json:"is_enable" json:"is_enable"`
-	IsAdmin  bool   `json:"is_admin" json:"is_admin"`
-}
-
 type User struct {
 	Username string `db:"username" json:"username"`
 	Nickname string `db:"nickname" json:"nickname"`
@@ -88,51 +79,44 @@ func UpdUserEnable(ctx context.Context, user User) {
 	mustCommit(tx)
 }
 
-type Account struct {
-	OjId     int    `json:"oj_id" db:"oj_id"`
+type Award struct {
 	Username string `json:"username" db:"username"`
-	Account  string `json:"account" db:"account"`
+	Medal    int    `json:"medal" db:"medal"`
+	Award    string `json:"award" db:"award"`
+	XcpcId   int    `json:"xcpc_id" db:"xcpc_id"`
 }
 
-// UpdAccount update if account already exists, otherwise insert
-func UpdAccount(ctx context.Context, account Account) {
-	mustNamedExec(ctx, "INSERT INTO oj_user_rel(oj_id, username, account) VALUES(:oj_id, :username, :account) ON DUPLICATE KEY UPDATE account=VALUES(account)", account)
+// GetAwardsByUsername return awards of 1 user
+func GetAwardsByUsername(ctx context.Context, username string) []Award {
+	query := getAwardsSQL + " AND user.username=? ORDER BY xcpc_date"
+	ret := make([]Award, 0)
+	mustSelect(ctx, &ret, query, username)
+	return ret
 }
 
-func GetEnableAccount(ctx context.Context) (ret []Account) {
-	mustSelect(ctx, &ret, "SELECT * FROM oj_user_rel WHERE username IN (SELECT username FROM user WHERE is_enable=1)")
-	return
-}
-
-// GetUserAward return all user-award if isEnable=false
-func GetUserAward(ctx context.Context, isEnable bool) (ret []struct {
-	Username string `db:"username"`
-	Medal    int    `db:"medal"`
-	Award    string `db:"award"`
-}) {
-	query := `SELECT user.username AS username, medal, award
-FROM user, team_user_rel, xcpc_team_rel, xcpc
-WHERE user.username=team_user_rel.username
-AND team_user_rel.team_id=xcpc_team_rel.team_id
-AND xcpc.id = xcpc_team_rel.xcpc_id`
+// GetAwardsAll return awards of all users
+// only return enable users if isEnable=true
+func GetAwardsAll(ctx context.Context, isEnable bool) []Award {
+	query := getAwardsSQL
 	if isEnable {
 		query += " AND is_enable=true"
 	}
 	query += " ORDER BY xcpc_date"
+	ret := make([]Award, 0)
 	mustSelect(ctx, &ret, query)
-	return
+	return ret
 }
 
 type userGroup struct {
-	GroupId   int          `json:"group_id" db:"group_id"`
-	GroupName string       `json:"group_name" db:"group_name"`
-	Users     []SimpleUser `json:"users"`
+	GroupId   int    `json:"group_id" db:"group_id"`
+	GroupName string `json:"group_name" db:"group_name"`
+	Users     []User `json:"users"`
 }
 
-// GetOfficialUserGroups return official groups without users
+// GetOfficialGroups return official groups without users
 // Official groups are groups which is_grade=true, such as 2018, 2019
-func GetOfficialUserGroups(ctx context.Context) []userGroup {
-	query := `SELECT group_id, group_name FROM user_group WHERE is_grade=true`
+func GetOfficialGroups(ctx context.Context) []userGroup {
+	query := `SELECT group_id, group_name FROM team_group WHERE is_grade`
 	ret := make([]userGroup, 0)
 	mustSelect(ctx, &ret, query)
 	return ret
@@ -141,22 +125,24 @@ func GetOfficialUserGroups(ctx context.Context) []userGroup {
 // GetOfficialUsers return official groups with users
 // return all users if is_enable=false
 // groups with no user will be ignored
+// each user can be in at most 1 group at a time
+// official group should only contain teams with is_self=true
 func GetOfficialUsers(ctx context.Context, isEnable bool) []userGroup {
 	grp := make(map[int]*userGroup)
-	groups := GetOfficialUserGroups(ctx)
+	groups := GetOfficialGroups(ctx)
 	for _, row := range groups {
 		grp[row.GroupId] = &userGroup{
 			GroupId:   row.GroupId,
 			GroupName: row.GroupName,
-			Users:     make([]SimpleUser, 0),
+			Users:     make([]User, 0),
 		}
 	}
-	query := `SELECT user.username AS username, nickname, cf_rating, is_enable, is_admin, user_group.group_id AS group_id
-FROM user, user_group_rel, user_group
-WHERE user.username = user_group_rel.username
-AND user_group.group_id = user_group_rel.group_id AND is_grade=true`
+	query := `SELECT user.username AS username, nickname, cf_rating, is_enable, is_admin, team_group.group_id AS group_id
+FROM user, team_group_rel, team_group, team_user_rel
+WHERE user.username = team_user_rel.username AND team_user_rel.team_id = team_group_rel.team_id
+AND team_group.group_id = team_group_rel.group_id AND is_grade`
 	if isEnable {
-		query += " AND is_enable=true"
+		query += " AND is_enable"
 	}
 	query += " ORDER BY group_name DESC"
 	var data []struct {
@@ -169,7 +155,7 @@ AND user_group.group_id = user_group_rel.group_id AND is_grade=true`
 	}
 	mustSelect(ctx, &data, query)
 	for _, x := range data {
-		grp[x.GroupId].Users = append(grp[x.GroupId].Users, SimpleUser{
+		grp[x.GroupId].Users = append(grp[x.GroupId].Users, User{
 			Username: x.Username,
 			Nickname: x.Nickname,
 			CfRating: x.CfRating,

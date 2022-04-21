@@ -14,11 +14,20 @@ import (
 )
 
 var (
-	defaultBeginTime = parseTime("2000-01-01")
-	defaultEndTime   = parseTime("2100-01-01")
+	defaultBeginTime = parseDate("2000-01-01")
+	defaultEndTime   = parseDate("2100-01-01")
 )
 
-// Params get json
+func parseDate(t string) time.Time {
+	ret, err := time.ParseInLocation("2006-01-02", t, time.Local)
+	if err != nil {
+		panic(utils.ErrBadRequest)
+	}
+	return ret
+}
+
+// ----------------- params from req.Body in json format -----------------
+
 type Params gabs.Container
 
 func (params *Params) getInt(path string) int {
@@ -60,6 +69,8 @@ func decodeParamVar(r *http.Request, to interface{}) {
 	}
 }
 
+// ----------------------- params from URL.Query() -----------------------
+// For example, '/users?is_enable=true'
 func getParam(r *http.Request, key string, defaultValue string) string {
 	if !r.URL.Query().Has(key) {
 		return defaultValue
@@ -67,11 +78,33 @@ func getParam(r *http.Request, key string, defaultValue string) string {
 	return r.URL.Query().Get(key)
 }
 
-func getParamTime(r *http.Request, key string, defaultValue time.Time) time.Time {
+func getParamRequired(r *http.Request, key string) string {
+	if !r.URL.Query().Has(key) {
+		panic(utils.ErrBadRequest)
+	}
+	return r.URL.Query().Get(key)
+}
+
+func getParamInt(r *http.Request, key string, defaultValue int) int {
 	if !r.URL.Query().Has(key) {
 		return defaultValue
 	}
-	return parseTime(r.URL.Query().Get(key))
+	x, err := strconv.Atoi(r.URL.Query().Get(key))
+	if err != nil {
+		panic(err)
+	}
+	return x
+}
+
+func getParamDate(r *http.Request, key string, defaultValue time.Time) time.Time {
+	if !r.URL.Query().Has(key) {
+		return defaultValue
+	}
+	return parseDate(r.URL.Query().Get(key))
+}
+
+func getParamDateRequired(r *http.Request, key string) time.Time {
+	return parseDate(getParamRequired(r, key))
 }
 
 func getParamBool(r *http.Request, key string, defaultValue bool) bool {
@@ -85,20 +118,21 @@ func getParamBool(r *http.Request, key string, defaultValue bool) bool {
 	return v
 }
 
-// getParamIntURL get parameter (type is int) from URL, like '/contest_group/1'
-func getParamIntURL(r *http.Request, key string) int {
+// ------------------------ params from URL.Path -------------------------
+// For example, '/contest/{id}'
+func getParamURL(r *http.Request, key string) string {
 	vars := mux.Vars(r)
-	x, err := strconv.Atoi(vars[key])
-	if err != nil {
+	x, ok := vars[key]
+	if !ok {
 		panic(utils.ErrBadRequest)
 	}
 	return x
 }
 
-func parseTime(t string) time.Time {
-	ret, err := time.ParseInLocation("2006-01-02", t, time.Local)
+func getParamIntURL(r *http.Request, key string) int {
+	x, err := strconv.Atoi(getParamURL(r, key))
 	if err != nil {
 		panic(utils.ErrBadRequest)
 	}
-	return ret
+	return x
 }

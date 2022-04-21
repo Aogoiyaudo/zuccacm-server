@@ -13,4 +13,10 @@ const (
 	updTeamEnableSQL  = "UPDATE team SET is_enable=:is_enable WHERE id=:id"
 
 	addContestProblemSQL = "INSERT INTO contest_problem(contest_id, oj_id, pid, `index`) VALUES(:contest_id, :oj_id, :pid, :index)"
+
+	getAwardsSQL = `SELECT user.username AS username, medal, award, xcpc_id
+FROM user, team_user_rel, xcpc_team_rel, xcpc
+WHERE user.username=team_user_rel.username
+AND team_user_rel.team_id=xcpc_team_rel.team_id
+AND xcpc.id = xcpc_team_rel.xcpc_id`
 )

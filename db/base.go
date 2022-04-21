@@ -84,3 +84,7 @@ func (t *Datetime) UnmarshalJSON(b []byte) error {
 func (t Datetime) String() string {
 	return time.Time(t).Format("2006-01-02 15:04:05")
 }
+
+func (t Datetime) Unix() int64 {
+	return time.Time(t).Unix()
+}
