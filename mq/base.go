@@ -19,6 +19,7 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	Instance.SetLoggerLevel(nsq.LogLevelWarning)
 }
 
 func Topic(ojId int) string {
@@ -47,4 +48,5 @@ func ExecTask(topic string, task *Task) {
 	if err != nil {
 		panic(err)
 	}
+	log.WithField("task", task.String()).Info("Task has been created")
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"zuccacm-server/db"
+	tshirt "zuccacm-server/enum"
 	"zuccacm-server/utils"
 )
 
@@ -13,12 +14,12 @@ var userRouter = Router.PathPrefix("/user").Subrouter()
 
 func init() {
 	userRouter.HandleFunc("/add", adminOnly(addUser)).Methods("POST")
-	userRouter.HandleFunc("/upd", updUser).Methods("POST")
+	userRouter.HandleFunc("/upd", userSelfOrAdminOnly(updUser)).Methods("POST")
+	userRouter.HandleFunc("/upd_oj", userSelfOrAdminOnly(updUserAccount)).Methods("POST")
 	userRouter.HandleFunc("/upd_admin", adminOnly(updUserAdmin)).Methods("POST")
 	userRouter.HandleFunc("/upd_enable", adminOnly(updUserEnable)).Methods("POST")
 	userRouter.HandleFunc("/{username}", getUser).Methods("GET")
 	userRouter.HandleFunc("/{username}/accounts", getUserAccounts).Methods("GET")
-	userRouter.HandleFunc("/{username}/accounts/upd", updUserAccount).Methods("POST")
 	userRouter.HandleFunc("/{username}/submissions", getUserSubmissions).Methods("GET")
 	userRouter.HandleFunc("/{username}/contests", getUserContests).Methods("GET")
 
@@ -32,16 +33,22 @@ func addUser(w http.ResponseWriter, r *http.Request) {
 	msgResponse(w, http.StatusOK, "添加用户成功")
 }
 
-// upd nickname, id_card, phone, qq, t_shirt
+// updUser update db.User basic info (nickname, id_card, phone, qq, t_shirt)
 func updUser(w http.ResponseWriter, r *http.Request) {
 	var user db.User
 	decodeParamVar(r, &user)
-	now := getCurrentUser(r)
-	if !now.IsAdmin && now.Username != user.Username {
-		panic(utils.ErrForbidden)
+	if _, err := tshirt.Parse(user.TShirt); err != nil {
+		panic(ErrBadRequest)
 	}
 	db.UpdUser(r.Context(), user)
 	msgResponse(w, http.StatusOK, "修改用户信息成功")
+}
+
+func updUserAccount(w http.ResponseWriter, r *http.Request) {
+	var account db.Account
+	decodeParamVar(r, &account)
+	db.UpdAccount(r.Context(), account)
+	msgResponse(w, http.StatusOK, "修改用户账号成功")
 }
 
 func updUserAdmin(w http.ResponseWriter, r *http.Request) {
@@ -58,13 +65,6 @@ func updUserEnable(w http.ResponseWriter, r *http.Request) {
 	msgResponse(w, http.StatusOK, "修改用户状态成功")
 }
 
-func updUserAccount(w http.ResponseWriter, r *http.Request) {
-	var account db.Account
-	decodeParamVar(r, &account)
-	db.UpdAccount(r.Context(), account)
-	msgResponse(w, http.StatusOK, "修改用户账号成功")
-}
-
 func getUserAccounts(w http.ResponseWriter, r *http.Request) {
 	type account struct {
 		OjId    int    `json:"oj_id" db:"oj_id"`
@@ -74,7 +74,7 @@ func getUserAccounts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	username := getParamURL(r, "username")
 
-	oj := db.GetOjAll(ctx)
+	oj := db.GetAllOJ(ctx)
 	data := make([]account, len(oj))
 	mp := make(map[int]int)
 	for i, x := range oj {

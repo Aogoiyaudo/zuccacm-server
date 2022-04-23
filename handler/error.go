@@ -1,4 +1,4 @@
-package utils
+package handler
 
 var (
 	ErrBadRequest  = ErrorMessage{"请求参数错误"}

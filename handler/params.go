@@ -9,8 +9,6 @@ import (
 
 	"github.com/Jeffail/gabs/v2"
 	"github.com/gorilla/mux"
-
-	"zuccacm-server/utils"
 )
 
 var (
@@ -21,7 +19,7 @@ var (
 func parseDate(t string) time.Time {
 	ret, err := time.ParseInLocation("2006-01-02", t, time.Local)
 	if err != nil {
-		panic(utils.ErrBadRequest)
+		panic(ErrBadRequest)
 	}
 	return ret
 }
@@ -33,7 +31,7 @@ type Params gabs.Container
 func (params *Params) getInt(path string) int {
 	x, err := params.get(path).(json.Number).Int64()
 	if err != nil {
-		panic(utils.ErrBadRequest)
+		panic(ErrBadRequest)
 	}
 	return int(x)
 }
@@ -45,19 +43,19 @@ func (params *Params) getString(path string) string {
 func (params *Params) get(path string) interface{} {
 	p := (*gabs.Container)(params)
 	if !p.Exists(path) {
-		panic(utils.ErrBadRequest)
+		panic(ErrBadRequest)
 	}
 	return p.Path(path).Data()
 }
 
-func decodeParam(r *http.Request) *Params {
-	b, err := io.ReadAll(r.Body)
+func decodeParam(body io.ReadCloser) *Params {
+	b, err := io.ReadAll(body)
 	if err != nil {
-		panic(utils.ErrBadRequest)
+		panic(ErrBadRequest)
 	}
 	p, err := gabs.ParseJSON(b)
 	if err != nil {
-		panic(utils.ErrBadRequest)
+		panic(ErrBadRequest)
 	}
 	return (*Params)(p)
 }
@@ -65,7 +63,7 @@ func decodeParam(r *http.Request) *Params {
 func decodeParamVar(r *http.Request, to interface{}) {
 	err := json.NewDecoder(r.Body).Decode(to)
 	if err != nil {
-		panic(utils.ErrBadRequest)
+		panic(ErrBadRequest)
 	}
 }
 
@@ -80,7 +78,7 @@ func getParam(r *http.Request, key string, defaultValue string) string {
 
 func getParamRequired(r *http.Request, key string) string {
 	if !r.URL.Query().Has(key) {
-		panic(utils.ErrBadRequest)
+		panic(ErrBadRequest)
 	}
 	return r.URL.Query().Get(key)
 }
@@ -113,7 +111,7 @@ func getParamBool(r *http.Request, key string, defaultValue bool) bool {
 	}
 	v, err := strconv.ParseBool(r.URL.Query().Get(key))
 	if err != nil {
-		panic(utils.ErrBadRequest)
+		panic(ErrBadRequest)
 	}
 	return v
 }
@@ -124,7 +122,7 @@ func getParamURL(r *http.Request, key string) string {
 	vars := mux.Vars(r)
 	x, ok := vars[key]
 	if !ok {
-		panic(utils.ErrBadRequest)
+		panic(ErrBadRequest)
 	}
 	return x
 }
@@ -132,7 +130,7 @@ func getParamURL(r *http.Request, key string) string {
 func getParamIntURL(r *http.Request, key string) int {
 	x, err := strconv.Atoi(getParamURL(r, key))
 	if err != nil {
-		panic(utils.ErrBadRequest)
+		panic(ErrBadRequest)
 	}
 	return x
 }

@@ -55,18 +55,26 @@ func AddUser(ctx context.Context, user User) {
 	mustCommit(tx)
 }
 
+// UpdUser update User basic info (nickname, id_card, phone, qq, t_shirt)
+// self-team will update Team.Name at the same time
 func UpdUser(ctx context.Context, user User) {
-	team := GetTeamBySelf(ctx, user.Username)
-	team.Name = user.Nickname
 	tx := instance.MustBeginTx(ctx, nil)
 	defer tx.Rollback()
-	mustNamedExecTx(tx, ctx, updUserSQL, user)
-	mustNamedExecTx(tx, ctx, updTeamSQL, team)
+	query := `UPDATE user
+SET nickname=:nickname, id_card=:id_card, phone=:phone, qq=:qq, t_shirt=:t_shirt
+WHERE username=:username`
+	mustNamedExecTx(tx, ctx, query, user)
+	query = "UPDATE team SET name=:name WHERE id=:id"
+
+	team := GetTeamBySelf(ctx, user.Username)
+	team.Name = user.Nickname
+	mustNamedExecTx(tx, ctx, query, team)
 	mustCommit(tx)
 }
 
 func UpdUserAdmin(ctx context.Context, user User) {
-	mustNamedExec(ctx, updUserAdminSQL, user)
+	query := "UPDATE user SET is_admin=:is_admin WHERE username=:username"
+	mustNamedExec(ctx, query, user)
 }
 
 func UpdUserEnable(ctx context.Context, user User) {

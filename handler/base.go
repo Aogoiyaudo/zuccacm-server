@@ -38,6 +38,23 @@ func init() {
 	})
 }
 
+func stackInfo() string {
+	info := "\nERROR STACK:\n"
+	pc := make([]uintptr, 20)
+	n := runtime.Callers(0, pc)
+	frames := runtime.CallersFrames(pc[:n])
+	for n > 0 {
+		frame, _ := frames.Next()
+		if utils.IsLocalFile(frame.File, config.RootDir) {
+			file := fmt.Sprintf("%s:%d", utils.SimplePath(frame.File, config.RootDir), frame.Line)
+			function := fmt.Sprintf("[%s]", utils.SimplePath(frame.Function, config.RootDir))
+			info += fmt.Sprintf("%-25s %s\n", file, function)
+		}
+		n--
+	}
+	return info
+}
+
 func addCORSHeader(w http.ResponseWriter, r *http.Request) {
 	if len(r.Header["Origin"]) > 0 {
 		w.Header().Set("Access-Control-Allow-Origin", r.Header["Origin"][0]) // 允许访问所有域，可以换成具体url，注意仅具体url才能带cookie信息
@@ -58,23 +75,6 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func stackInfo() string {
-	info := "\nERROR STACK:\n"
-	pc := make([]uintptr, 20)
-	n := runtime.Callers(0, pc)
-	frames := runtime.CallersFrames(pc[:n])
-	for n > 0 {
-		frame, _ := frames.Next()
-		if utils.IsLocalFile(frame.File, config.RootDir) {
-			file := fmt.Sprintf("%s:%d", utils.SimplePath(frame.File, config.RootDir), frame.Line)
-			function := fmt.Sprintf("[%s]", utils.SimplePath(frame.Function, config.RootDir))
-			info += fmt.Sprintf("%-25s %s\n", file, function)
-		}
-		n--
-	}
-	return info
-}
-
 // baseMiddleware logging and handle panic
 func baseMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -83,22 +83,22 @@ func baseMiddleware(next http.Handler) http.Handler {
 				log.WithField("stack", stackInfo()).Error(err)
 				resp := &Response{}
 				if err == sql.ErrNoRows {
-					err = utils.ErrNotFound
+					err = ErrNotFound
 				}
 				switch err {
-				case utils.ErrBadRequest:
+				case ErrBadRequest:
 					resp.Code = http.StatusBadRequest
-				case utils.ErrForbidden:
+				case ErrForbidden:
 					resp.Code = http.StatusForbidden
-				case utils.ErrNotLogged, utils.ErrLoginFailed:
+				case ErrNotLogged, ErrLoginFailed:
 					resp.Code = http.StatusUnauthorized
-				case utils.ErrNotFound:
+				case ErrNotFound:
 					resp.Code = http.StatusNotFound
 				default:
 					resp.Code = http.StatusInternalServerError
 				}
 				switch err.(type) {
-				case utils.ErrorMessage:
+				case ErrorMessage:
 					resp.Msg = err.(error).Error()
 				default:
 					resp.Msg = "服务器内部错误"
@@ -115,17 +115,47 @@ func baseMiddleware(next http.Handler) http.Handler {
 
 func loginRequired(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//getCurrentUser(r)
+		if log.GetLevel() == log.DebugLevel {
+			next(w, r)
+			return
+		}
+		getCurrentUser(r)
 		next(w, r)
 	}
 }
 
 func adminOnly(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//user := getCurrentUser(r)
-		//if !user.IsAdmin {
-		//	panic(ErrForbidden)
-		//}
+		if log.GetLevel() == log.DebugLevel {
+			next(w, r)
+			return
+		}
+		user := getCurrentUser(r)
+		if !user.IsAdmin {
+			panic(ErrForbidden)
+		}
+		next(w, r)
+	}
+}
+
+// Only the user himself or admin can do it
+// For example, normal users can only modify their own info
+func userSelfOrAdminOnly(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if log.GetLevel() == log.DebugLevel {
+			next(w, r)
+			return
+		}
+		b, err := r.GetBody()
+		if err != nil {
+			panic(err)
+		}
+		p := decodeParam(b)
+		username := p.getString("username")
+		user := getCurrentUser(r)
+		if user.Username != username && !user.IsAdmin {
+			panic(ErrForbidden)
+		}
 		next(w, r)
 	}
 }

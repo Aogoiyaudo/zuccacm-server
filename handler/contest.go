@@ -8,7 +8,6 @@ import (
 
 	"zuccacm-server/db"
 	"zuccacm-server/mq"
-	"zuccacm-server/utils"
 )
 
 var contestRouter = Router.PathPrefix("/contest").Subrouter()
@@ -140,7 +139,7 @@ func refreshContest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	c := db.GetContestById(ctx, args.Id)
 	if c.OjId == 0 {
-		panic(utils.ErrorMessage{Msg: "can't refresh contest without oj_id"})
+		panic(ErrorMessage{Msg: "can't refresh contest without oj_id"})
 	}
 	mq.ExecTask(mq.Topic(c.OjId), mq.ContestTask(args.Id, c.Cid, args.Group))
 	msgResponse(w, http.StatusOK, "任务已创建：获取比赛")

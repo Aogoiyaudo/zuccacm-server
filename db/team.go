@@ -34,6 +34,7 @@ func AddTeam(ctx context.Context, team Team) {
 	mustCommit(tx)
 }
 
+// GetTeamBySelf return the self team of this user
 func GetTeamBySelf(ctx context.Context, username string) (ret Team) {
 	mustGet(ctx, &ret, "SELECT * FROM team WHERE is_self=true AND id IN (SELECT team_id FROM team_user_rel WHERE username=?)", username)
 	return
