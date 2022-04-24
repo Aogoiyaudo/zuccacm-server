@@ -50,7 +50,7 @@ func (s *dbSubmission) jsonType() *Submission {
 }
 
 func AddSubmission(ctx context.Context, s []Submission) {
-	accounts := GetEnableAccount(ctx)
+	accounts := GetAllAccounts(ctx)
 	type key struct {
 		oj      int
 		account string
@@ -93,11 +93,17 @@ ORDER BY create_time`
 	return ret
 }
 
+func GetAcceptedSubmissionByUsername(ctx context.Context, username string, begin, end time.Time) []Submission {
+	query := `SELECT min(create_time) AS create_time
+FROM submission WHERE is_accepted AND username=?
+GROUP BY oj_id, pid HAVING min(create_time) BETWEEN ? AND ?`
+	ret := make([]Submission, 0)
+	mustSelect(ctx, &ret, query, username, begin, end)
+	return ret
+}
+
 func GetSubmissionByUsername(ctx context.Context, username string, begin, end time.Time) []Submission {
-	query := `SELECT * FROM submission
-WHERE is_accepted AND username=?
-AND create_time BETWEEN ? AND ?
-ORDER BY create_time`
+	query := "SELECT * FROM submission WHERE username=? AND create_time BETWEEN ? AND ?"
 	ret := make([]Submission, 0)
 	mustSelect(ctx, &ret, query, username, begin, end)
 	return ret

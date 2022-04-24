@@ -80,28 +80,19 @@ func baseMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				log.WithField("stack", stackInfo()).Error(err)
 				resp := &Response{}
 				if err == sql.ErrNoRows {
-					err = ErrNotFound
-				}
-				switch err {
-				case ErrBadRequest:
-					resp.Code = http.StatusBadRequest
-				case ErrForbidden:
-					resp.Code = http.StatusForbidden
-				case ErrNotLogged, ErrLoginFailed:
-					resp.Code = http.StatusUnauthorized
-				case ErrNotFound:
-					resp.Code = http.StatusNotFound
-				default:
-					resp.Code = http.StatusInternalServerError
+					err = ErrNotFound.Wrap(err.(error))
 				}
 				switch err.(type) {
-				case ErrorMessage:
+				case CustomError:
+					resp.Code = err.(CustomError).StatusCode()
 					resp.Msg = err.(error).Error()
+					log.WithField("stack", stackInfo()).Error(err.(CustomError).Cause())
 				default:
+					resp.Code = http.StatusInternalServerError
 					resp.Msg = "服务器内部错误"
+					log.WithField("stack", stackInfo()).Error(err)
 				}
 				resp.Exec(w)
 			}
@@ -119,6 +110,7 @@ func loginRequired(next http.HandlerFunc) http.HandlerFunc {
 			next(w, r)
 			return
 		}
+
 		getCurrentUser(r)
 		next(w, r)
 	}
@@ -130,9 +122,10 @@ func adminOnly(next http.HandlerFunc) http.HandlerFunc {
 			next(w, r)
 			return
 		}
+
 		user := getCurrentUser(r)
 		if !user.IsAdmin {
-			panic(ErrForbidden)
+			panic(ErrForbidden.New())
 		}
 		next(w, r)
 	}
@@ -146,6 +139,7 @@ func userSelfOrAdminOnly(next http.HandlerFunc) http.HandlerFunc {
 			next(w, r)
 			return
 		}
+
 		b, err := r.GetBody()
 		if err != nil {
 			panic(err)
@@ -154,7 +148,7 @@ func userSelfOrAdminOnly(next http.HandlerFunc) http.HandlerFunc {
 		username := p.getString("username")
 		user := getCurrentUser(r)
 		if user.Username != username && !user.IsAdmin {
-			panic(ErrForbidden)
+			panic(ErrForbidden.New())
 		}
 		next(w, r)
 	}

@@ -39,7 +39,7 @@ func ssoLogin(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		panic(ErrLoginFailed)
+		panic(ErrLoginFailed.New())
 	}
 	username := params.getString("username")
 	ctx := r.Context()
@@ -83,7 +83,7 @@ func getCurrentUser(r *http.Request) *db.User {
 	session := mustGetSession(r)
 	username := session.Values["username"]
 	if username == nil {
-		panic(ErrNotLogged)
+		panic(ErrNotLogged.New())
 	}
 	user := db.GetUserByUsername(r.Context(), username.(string))
 	return user

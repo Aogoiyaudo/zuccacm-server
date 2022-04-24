@@ -51,10 +51,16 @@ VALUES(:oj_id, :username, :account) ON DUPLICATE KEY UPDATE account=VALUES(accou
 	mustCommit(tx)
 }
 
-// GetEnableAccount return all enable accounts
-func GetEnableAccount(ctx context.Context) (ret []Account) {
-	mustSelect(ctx, &ret, "SELECT * FROM oj_user_rel WHERE username IN (SELECT username FROM user WHERE is_enable=1)")
-	return
+func GetAllAccounts(ctx context.Context) []Account {
+	ret := make([]Account, 0)
+	mustSelect(ctx, &ret, "SELECT * FROM oj_user_rel WHERE oj_id > 0")
+	return ret
+}
+
+func GetAccountsByOJ(ctx context.Context, ojId int) []Account {
+	ret := make([]Account, 0)
+	mustSelect(ctx, &ret, "SELECT * FROM oj_user_rel WHERE oj_id=?", ojId)
+	return ret
 }
 
 type ojAccount struct {
@@ -62,10 +68,8 @@ type ojAccount struct {
 	Accounts []Account
 }
 
-func GetAllAccounts(ctx context.Context) []ojAccount {
-	query := "SELECT * FROM oj_user_rel WHERE oj_id > 0"
-	data := make([]Account, 0)
-	mustSelect(ctx, &data, query)
+func GetAllAccountsGroupByOJ(ctx context.Context) []ojAccount {
+	data := GetAllAccounts(ctx)
 
 	oj := GetAllOJ(ctx)
 	mp := make(map[int]int)
@@ -80,6 +84,15 @@ func GetAllAccounts(ctx context.Context) []ojAccount {
 	for _, x := range data {
 		i := mp[x.OjId]
 		ret[i].Accounts = append(ret[i].Accounts, x)
+	}
+	return ret
+}
+
+func GetAllAccountsMap(ctx context.Context) map[Account]string {
+	ret := make(map[Account]string)
+	accounts := GetAllAccounts(ctx)
+	for _, ac := range accounts {
+		ret[Account{OjId: ac.OjId, Account: ac.Account}] = ac.Username
 	}
 	return ret
 }

@@ -36,5 +36,5 @@ func refreshSubmission(w http.ResponseWriter, r *http.Request) {
 	args.GroupCount = 1000
 	decodeParamVar(r, &args)
 	mq.ExecTask(mq.Topic(args.OjId), mq.SubmissionTask(args.Username, args.Count, args.Group, args.GroupCount))
-	msgResponse(w, http.StatusOK, "任务已创建：获取提交")
+	msgResponse(w, http.StatusOK, "任务已创建：刷新提交")
 }

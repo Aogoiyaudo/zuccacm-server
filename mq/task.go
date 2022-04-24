@@ -22,3 +22,10 @@ func ContestTask(id int, cid, group string) (t *Task) {
 	t.mustSet(group, "group")
 	return
 }
+
+func RatingTask(username []string) (t *Task) {
+	t = newTask()
+	t.mustSet("rating", "task_type")
+	t.mustSet(username, "username")
+	return
+}

@@ -5,8 +5,11 @@ import (
 	"sort"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"zuccacm-server/db"
 	tshirt "zuccacm-server/enum"
+	"zuccacm-server/mq"
 	"zuccacm-server/utils"
 )
 
@@ -18,6 +21,9 @@ func init() {
 	userRouter.HandleFunc("/upd_oj", userSelfOrAdminOnly(updUserAccount)).Methods("POST")
 	userRouter.HandleFunc("/upd_admin", adminOnly(updUserAdmin)).Methods("POST")
 	userRouter.HandleFunc("/upd_enable", adminOnly(updUserEnable)).Methods("POST")
+	userRouter.HandleFunc("/upd_rating", updRating).Methods("POST")
+	userRouter.HandleFunc("/refresh_rating", refreshUserRating).Methods("POST")
+
 	userRouter.HandleFunc("/{username}", getUser).Methods("GET")
 	userRouter.HandleFunc("/{username}/accounts", getUserAccounts).Methods("GET")
 	userRouter.HandleFunc("/{username}/submissions", getUserSubmissions).Methods("GET")
@@ -38,7 +44,7 @@ func updUser(w http.ResponseWriter, r *http.Request) {
 	var user db.User
 	decodeParamVar(r, &user)
 	if _, err := tshirt.Parse(user.TShirt); err != nil {
-		panic(ErrBadRequest)
+		panic(ErrBadRequest.Wrap(err))
 	}
 	db.UpdUser(r.Context(), user)
 	msgResponse(w, http.StatusOK, "修改用户信息成功")
@@ -63,6 +69,39 @@ func updUserEnable(w http.ResponseWriter, r *http.Request) {
 	decodeParamVar(r, &user)
 	db.UpdUserEnable(r.Context(), user)
 	msgResponse(w, http.StatusOK, "修改用户状态成功")
+}
+
+func updRating(w http.ResponseWriter, r *http.Request) {
+	var args []struct {
+		Account string `json:"username"`
+		OjId    int    `json:"oj_id"`
+		Rating  int    `json:"rating"`
+	}
+	decodeParamVar(r, &args)
+	ctx := r.Context()
+
+	mp := db.GetAllAccountsMap(ctx)
+	users := make([]db.User, 0)
+	for _, arg := range args {
+		users = append(users, db.User{
+			Username: mp[db.Account{OjId: arg.OjId, Account: arg.Account}],
+			CfRating: arg.Rating,
+		})
+	}
+	db.UpdUserRating(ctx, users)
+	msgResponse(w, http.StatusOK, "upd user rating success")
+}
+
+func refreshUserRating(w http.ResponseWriter, r *http.Request) {
+	params := decodeParam(r.Body)
+	ojId := params.getInt("oj_id")
+	tmp := params.get("username").([]interface{})
+	var username []string
+	for _, u := range tmp {
+		username = append(username, u.(string))
+	}
+	mq.ExecTask(mq.Topic(ojId), mq.RatingTask(username))
+	msgResponse(w, http.StatusOK, "任务已创建：刷新Rating")
 }
 
 func getUserAccounts(w http.ResponseWriter, r *http.Request) {
@@ -92,16 +131,29 @@ func getUserAccounts(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUserSubmissions(w http.ResponseWriter, r *http.Request) {
+	type Data struct {
+		Date       string `json:"date"`
+		Solved     int    `json:"solved"`
+		Submission int    `json:"submission"`
+	}
 	ctx := r.Context()
 	username := getParamURL(r, "username")
 	begin := getParamDateRequired(r, "begin_time")
 	end := getParamDateRequired(r, "end_time").Add(time.Hour * 24).Add(time.Second * -1)
-	submissions := db.GetSubmissionByUsername(ctx, username, begin, end)
 	n := utils.SubDays(begin, end) + 1
-	data := make([]int, n)
+	data := make([]Data, n)
+	for i := range data {
+		data[i].Date = db.Datetime(begin.AddDate(0, 0, i)).Date()
+	}
+	submissions := db.GetAcceptedSubmissionByUsername(ctx, username, begin, end)
 	for _, s := range submissions {
 		i := utils.SubDays(begin, time.Time(s.CreateTime))
-		data[i]++
+		data[i].Solved++
+	}
+	submissions = db.GetSubmissionByUsername(ctx, username, begin, end)
+	for _, s := range submissions {
+		i := utils.SubDays(begin, time.Time(s.CreateTime))
+		data[i].Submission++
 	}
 	dataResponse(w, data)
 }
@@ -224,6 +276,13 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	userAward := db.GetAwardsAll(ctx, isEnable)
 	for _, x := range userAward {
+		if _, ok := mpUser[x.Username]; !ok {
+			log.WithFields(log.Fields{
+				"username": x.Username,
+				"award":    x.Award,
+			}).Warn("unofficial user with award")
+			continue
+		}
 		if x.Medal > 0 {
 			mpUser[x.Username].Medals[x.Medal-1]++
 		}

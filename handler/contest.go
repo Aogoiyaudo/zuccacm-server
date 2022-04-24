@@ -126,8 +126,11 @@ func addContest(w http.ResponseWriter, r *http.Request) {
 func updContest(w http.ResponseWriter, r *http.Request) {
 	var contest db.Contest
 	decodeParamVar(r, &contest)
+	if contest.Id == 0 {
+		panic(ErrBadRequest.WithMessage("contest.id can't be empty or zero"))
+	}
 	db.UpdContest(r.Context(), contest)
-	msgResponse(w, http.StatusOK, "更新比赛成功")
+	msgResponse(w, http.StatusOK, "修改比赛成功")
 }
 
 func refreshContest(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +142,7 @@ func refreshContest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	c := db.GetContestById(ctx, args.Id)
 	if c.OjId == 0 {
-		panic(ErrorMessage{Msg: "can't refresh contest without oj_id"})
+		panic(ErrBadRequest.WithMessage("oj_id can't be empty or zero"))
 	}
 	mq.ExecTask(mq.Topic(c.OjId), mq.ContestTask(args.Id, c.Cid, args.Group))
 	msgResponse(w, http.StatusOK, "任务已创建：获取比赛")

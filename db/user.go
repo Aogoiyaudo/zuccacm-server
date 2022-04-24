@@ -77,6 +77,12 @@ func UpdUserAdmin(ctx context.Context, user User) {
 	mustNamedExec(ctx, query, user)
 }
 
+func UpdUserRating(ctx context.Context, users []User) {
+	query := `INSERT INTO user(username, cf_rating) VALUES(:username, :cf_rating)
+ON DUPLICATE KEY UPDATE cf_rating=VALUES(cf_rating)`
+	mustNamedExec(ctx, query, users)
+}
+
 func UpdUserEnable(ctx context.Context, user User) {
 	team := GetTeamBySelf(ctx, user.Username)
 	team.IsEnable = user.IsEnable
