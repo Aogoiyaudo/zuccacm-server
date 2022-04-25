@@ -1,6 +1,11 @@
 package db
 
-import "context"
+import (
+	"context"
+	"database/sql"
+
+	log "github.com/sirupsen/logrus"
+)
 
 type OJ struct {
 	OjId   int    `json:"oj_id" db:"oj_id"`
@@ -30,7 +35,23 @@ type Account struct {
 	Account  string `json:"account" db:"account"`
 }
 
-func GetAccountByUsername(ctx context.Context, username string) []Account {
+func GetAccount(ctx context.Context, username string, ojId int) (account string) {
+	query := "SELECT * FROM oj_user_rel WHERE username=? AND oj_id=?"
+	err := instance.Select(&account, query, username, ojId)
+	if err == sql.ErrNoRows {
+		log.WithFields(log.Fields{
+			"username": username,
+			"oj_id":    ojId,
+		}).Warn("account not found")
+		account, err = "", nil
+	}
+	if err != nil {
+		panic(err)
+	}
+	return account
+}
+
+func GetAccountsByUsername(ctx context.Context, username string) []Account {
 	query := "SELECT * FROM oj_user_rel WHERE username=?"
 	ret := make([]Account, 0)
 	mustSelect(ctx, &ret, query, username)

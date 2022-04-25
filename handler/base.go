@@ -1,13 +1,16 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"runtime"
 	"time"
 
+	"github.com/Jeffail/gabs/v2"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
 
@@ -140,12 +143,16 @@ func userSelfOrAdminOnly(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		b, err := r.GetBody()
+		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			panic(err)
 		}
-		p := decodeParam(b)
-		username := p.getString("username")
+		r.Body = ioutil.NopCloser(bytes.NewReader(b))
+		p, err := gabs.ParseJSON(b)
+		if err != nil {
+			panic(ErrBadRequest.Wrap(err))
+		}
+		username := p.S("username").Data().(string)
 		user := getCurrentUser(r)
 		if user.Username != username && !user.IsAdmin {
 			panic(ErrForbidden.New())

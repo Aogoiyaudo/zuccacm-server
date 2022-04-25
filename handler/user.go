@@ -123,7 +123,7 @@ func getUserAccounts(w http.ResponseWriter, r *http.Request) {
 		}
 		mp[x.OjId] = i
 	}
-	ac := db.GetAccountByUsername(ctx, username)
+	ac := db.GetAccountsByUsername(ctx, username)
 	for _, x := range ac {
 		data[mp[x.OjId]].Account = x.Account
 	}
