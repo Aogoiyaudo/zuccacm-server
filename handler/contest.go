@@ -15,7 +15,8 @@ var contestGroupRouter = Router.PathPrefix("/contest_group").Subrouter()
 
 func init() {
 	contestRouter.HandleFunc("/add", adminOnly(addContest)).Methods("POST")
-	contestRouter.HandleFunc("/upd", adminOnly(updContest)).Methods("POST")
+	contestRouter.HandleFunc("/upd", updContest).Methods("POST")
+	contestRouter.HandleFunc("/del", adminOnly(delContest)).Methods("POST")
 	contestRouter.HandleFunc("/refresh", adminOnly(refreshContest)).Methods("POST")
 	contestRouter.HandleFunc("/{id}", getContest).Methods("GET")
 
@@ -133,11 +134,19 @@ func updContest(w http.ResponseWriter, r *http.Request) {
 	msgResponse(w, http.StatusOK, "修改比赛成功")
 }
 
+func delContest(w http.ResponseWriter, r *http.Request) {
+	args := decodeParam(r.Body)
+	contestId := args.getInt("contest_id")
+	db.DelContest(r.Context(), contestId)
+	msgResponse(w, http.StatusOK, "删除比赛成功")
+}
+
 func refreshContest(w http.ResponseWriter, r *http.Request) {
 	args := struct {
 		Id    int    `json:"id"`
 		Group string `json:"group"`
 	}{}
+	args.Group = "5H0hEjEiuF"
 	decodeParamVar(r, &args)
 	ctx := r.Context()
 	c := db.GetContestById(ctx, args.Id)
@@ -145,7 +154,7 @@ func refreshContest(w http.ResponseWriter, r *http.Request) {
 		panic(ErrBadRequest.WithMessage("oj_id can't be empty or zero"))
 	}
 	mq.ExecTask(mq.Topic(c.OjId), mq.ContestTask(args.Id, c.Cid, args.Group))
-	msgResponse(w, http.StatusOK, "任务已创建：获取比赛")
+	msgResponse(w, http.StatusOK, "任务已创建：刷新比赛")
 }
 
 func getContestGroups(w http.ResponseWriter, r *http.Request) {

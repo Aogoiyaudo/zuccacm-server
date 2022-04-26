@@ -3,16 +3,113 @@ package db
 import "context"
 
 type Team struct {
-	Id       int    `json:"id" db:"id"`
-	Name     string `json:"name" db:"name"`
-	IsEnable bool   `json:"is_enable" db:"is_enable"`
-	IsSelf   bool   `json:"is_self" db:"is_self"`
-	Users    []User `json:"users"`
+	Id       int          `json:"id" db:"id"`
+	Name     string       `json:"name" db:"name"`
+	IsEnable bool         `json:"is_enable" db:"is_enable"`
+	IsSelf   bool         `json:"is_self" db:"is_self"`
+	Users    []UserSimple `json:"users"`
 }
 
 type TeamUser struct {
 	TeamId   int    `json:"team_id" db:"team_id"`
 	Username string `json:"username" db:"username"`
+}
+
+type TeamGroup struct {
+	GroupId   int    `json:"group_id" db:"group_id"`
+	GroupName string `json:"group_name" db:"group_name"`
+	IsGrade   bool   `json:"is_grade" db:"is_grade"`
+	Teams     []Team `json:"teams"`
+}
+
+// GetTeams return all teams with user
+func GetTeams(ctx context.Context, isEnable bool) []Team {
+	teams := make([]Team, 0)
+	query := "SELECT * FROM team"
+	if isEnable {
+		query += " WHERE is_enable=true"
+	}
+	mustSelect(ctx, &teams, query)
+	mp := make(map[int]int)
+	for i, t := range teams {
+		mp[t.Id] = i
+		teams[i].Users = make([]UserSimple, 0)
+	}
+
+	data := make([]struct {
+		TeamId   int    `db:"team_id"`
+		Username string `db:"username"`
+		Nickname string `db:"nickname"`
+	}, 0)
+	query = `SELECT team_id, user.username, nickname FROM team_user_rel, user
+WHERE team_user_rel.username = user.username`
+	if isEnable {
+		query += " AND team_id IN (SELECT id FROM team WHERE is_enable)"
+	}
+	mustSelect(ctx, &data, query)
+	for _, x := range data {
+		i := mp[x.TeamId]
+		teams[i].Users = append(teams[i].Users, UserSimple{
+			Username: x.Username,
+			Nickname: x.Nickname,
+		})
+	}
+	return teams
+}
+
+func GetTeamGroups(ctx context.Context, isGrade bool) []TeamGroup {
+	query := "SELECT * FROM team_group"
+	if isGrade {
+		query += " WHERE is_grade"
+	}
+	groups := make([]TeamGroup, 0)
+	mustSelect(ctx, &groups, query)
+	for i := range groups {
+		groups[i].Teams = make([]Team, 0)
+	}
+	return groups
+}
+
+// GetTeamGroupsWithTeams return groups with teams and team_users
+// empty groups will be ignored
+func GetTeamGroupsWithTeams(ctx context.Context, isGrade, isEnable bool) []TeamGroup {
+	groups := GetTeamGroups(ctx, isGrade)
+	teams := GetTeams(ctx, isEnable)
+	groupId := make(map[int]int)
+	teamId := make(map[int]int)
+	for i, g := range groups {
+		groupId[g.GroupId] = i
+	}
+	for i, t := range teams {
+		teamId[t.Id] = i
+	}
+
+	query := "SELECT * FROM team_group_rel"
+	if isGrade && isEnable {
+		query += ` WHERE group_id IN (SELECT group_id FROM team_group WHERE is_grade)
+AND team_id IN (SELECT id FROM team WHERE is_enable)`
+	} else if isGrade {
+		query += " WHERE group_id IN (SELECT group_id FROM team_group WHERE is_grade)"
+	} else if isEnable {
+		query += " WHERE team_id IN (SELECT id FROM team WHERE is_enable)"
+	}
+	data := make([]struct {
+		GroupId int `db:"group_id"`
+		TeamId  int `db:"team_id"`
+	}, 0)
+	mustSelect(ctx, &data, query)
+	for _, x := range data {
+		gid := groupId[x.GroupId]
+		tid := teamId[x.TeamId]
+		groups[gid].Teams = append(groups[gid].Teams, teams[tid])
+	}
+	ret := make([]TeamGroup, 0)
+	for _, x := range groups {
+		if len(x.Teams) > 0 {
+			ret = append(ret, x)
+		}
+	}
+	return ret
 }
 
 func AddTeam(ctx context.Context, team Team) {
@@ -62,11 +159,11 @@ AND contest_id = ?`
 			Id:     x.TeamId,
 			Name:   x.TeamName,
 			IsSelf: x.IsSelf,
-			Users:  make([]User, 0),
+			Users:  make([]UserSimple, 0),
 		}
 	}
 	for _, x := range data {
-		mpTeam[x.TeamId].Users = append(mpTeam[x.TeamId].Users, User{
+		mpTeam[x.TeamId].Users = append(mpTeam[x.TeamId].Users, UserSimple{
 			Username: x.Username,
 			Nickname: x.Nickname,
 		})

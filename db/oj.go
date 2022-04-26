@@ -36,8 +36,8 @@ type Account struct {
 }
 
 func GetAccount(ctx context.Context, username string, ojId int) (account string) {
-	query := "SELECT * FROM oj_user_rel WHERE username=? AND oj_id=?"
-	err := instance.Select(&account, query, username, ojId)
+	query := "SELECT account FROM oj_user_rel WHERE username=? AND oj_id=?"
+	err := instance.GetContext(ctx, &account, query, username, ojId)
 	if err == sql.ErrNoRows {
 		log.WithFields(log.Fields{
 			"username": username,

@@ -11,6 +11,7 @@ const (
 
 	addContestProblemSQL  = "INSERT INTO contest_problem(contest_id, oj_id, pid, `index`) VALUES(:contest_id, :oj_id, :pid, :index)"
 	addContestGroupRelSQL = "INSERT INTO contest_group_rel(group_id, contest_id) VALUES(:group_id, :contest_id)"
+	addContestTeamRelSQL  = "INSERT INTO contest_team_rel(contest_id, team_id) VALUES(:contest_id, :team_id)"
 
 	getAwardsSQL = `SELECT user.username AS username, medal, award, xcpc_id
 FROM user, team_user_rel, xcpc_team_rel, xcpc

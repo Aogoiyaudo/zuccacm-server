@@ -33,15 +33,15 @@ func handlerCurrentUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func ssoLogin(w http.ResponseWriter, r *http.Request) {
-	params := decodeParam(r.Body)
-	resp, err := http.Post(ssoURL, "application/json", bytes.NewReader([]byte((*gabs.Container)(params).String())))
+	args := decodeParam(r.Body)
+	resp, err := http.Post(ssoURL, "application/json", bytes.NewReader([]byte((*gabs.Container)(args).String())))
 	if err != nil {
 		panic(err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		panic(ErrLoginFailed.New())
 	}
-	username := params.getString("username")
+	username := args.getString("username")
 	ctx := r.Context()
 	user := db.GetUserByUsername(ctx, username)
 	if user == nil {

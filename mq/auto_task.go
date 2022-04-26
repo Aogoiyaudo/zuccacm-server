@@ -12,13 +12,15 @@ import (
 
 func init() {
 	runner := cron.New()
-	if _, err := runner.AddFunc("*/30 * * * *", refreshSubmission); err != nil {
-		log.Fatal(err)
-	}
-	if _, err := runner.AddFunc("23/30 * * * *", refreshRating); err != nil {
-		log.Fatal(err)
-	}
+	AddTask(runner, "*/30 * * * *", refreshSubmission)
+	AddTask(runner, "10/30 * * * *", refreshRating)
 	runner.Start()
+}
+
+func AddTask(taskRunner *cron.Cron, spec string, cmd func()) {
+	if _, err := taskRunner.AddFunc(spec, cmd); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func refreshSubmission() {
@@ -31,9 +33,13 @@ func refreshSubmission() {
 			username = append(username, u.Account)
 		}
 		if len(username) > 0 {
-			ExecTask(Topic(x.OjId), SubmissionTask(username, 100, nil, 0))
+			ExecTask(Topic(x.OjId), SubmissionTask(username, 1000, nil, 0))
 		}
 	}
+}
+
+func refreshGroupSubmission() {
+	ExecTask(Topic(1), SubmissionTask(nil, 0, []string{"5H0hEjEiuF"}, 100000))
 }
 
 func refreshRating() {

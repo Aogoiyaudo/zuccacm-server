@@ -11,7 +11,7 @@ var submissionRouter = Router.PathPrefix("/submission").Subrouter()
 
 func init() {
 	submissionRouter.HandleFunc("/add", addSubmissions).Methods("POST")
-	submissionRouter.HandleFunc("/refreshAll", adminOnly(refreshAllSubmission)).Methods("POST")
+	submissionRouter.HandleFunc("/refresh_all", adminOnly(refreshAllSubmission)).Methods("POST")
 	submissionRouter.HandleFunc("/refresh", userSelfOrAdminOnly(refreshSubmission)).Methods("POST")
 }
 

@@ -46,6 +46,14 @@ func mustSelect(ctx context.Context, dest interface{}, query string, args ...int
 	}
 }
 
+func mustExec(ctx context.Context, query string, args ...interface{}) {
+	instance.MustExecContext(ctx, query, args...)
+}
+
+func mustExecTx(tx *sqlx.Tx, ctx context.Context, query string, args ...interface{}) {
+	tx.MustExecContext(ctx, query, args...)
+}
+
 func mustNamedExecTx(tx *sqlx.Tx, ctx context.Context, query string, arg interface{}) sql.Result {
 	ret, err := tx.NamedExecContext(ctx, query, arg)
 	if err != nil {

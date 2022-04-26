@@ -23,6 +23,11 @@ type ContestGroupRel struct {
 	ContestId int `json:"contest_id" db:"contest_id"`
 }
 
+type ContestTeamRel struct {
+	ContestId int `json:"contest_id" db:"contest_id"`
+	TeamId    int `json:"team_id" db:"team_id"`
+}
+
 type Contest struct {
 	Id           int       `json:"id" db:"id"`
 	OjId         int       `json:"oj_id" db:"oj_id"`
@@ -34,6 +39,7 @@ type Contest struct {
 	Participants int       `json:"participants" db:"participants"`
 	Problems     []Problem `json:"problems"`
 	Groups       []int     `json:"groups"`
+	Teams        []int     `json:"teams"`
 }
 
 type dbContest struct {
@@ -47,6 +53,7 @@ type dbContest struct {
 	Participants int       `json:"participants" db:"participants"`
 	Problems     []Problem `json:"problems"`
 	Groups       []int     `json:"groups"`
+	Teams        []int     `json:"teams"`
 }
 
 func (c *Contest) dbType() *dbContest {
@@ -61,6 +68,7 @@ func (c *Contest) dbType() *dbContest {
 		Participants: c.Participants,
 		Problems:     c.Problems,
 		Groups:       c.Groups,
+		Teams:        c.Teams,
 	}
 }
 
@@ -68,7 +76,7 @@ func (c *Contest) dbType() *dbContest {
 func GetContestGroups(ctx context.Context, isEnable bool) []ContestGroup {
 	query := "SELECT * FROM contest_group"
 	if isEnable {
-		query += " WHERE is_enable=true"
+		query += " WHERE is_enable"
 	}
 	ret := make([]ContestGroup, 0)
 	mustSelect(ctx, &ret, query)
@@ -184,15 +192,30 @@ VALUES(:oj_id, :cid, :name, :start_time, :duration, :max_solved, :participants)`
 		}
 		mustNamedExecTx(tx, ctx, addContestGroupRelSQL, groups)
 	}
+	if len(c.Teams) > 0 {
+		teams := make([]ContestTeamRel, 0)
+		for _, x := range c.Teams {
+			teams = append(teams, ContestTeamRel{
+				ContestId: c.Id,
+				TeamId:    x,
+			})
+		}
+		mustNamedExecTx(tx, ctx, addContestTeamRelSQL, teams)
+	}
 	mustCommit(tx)
 }
 
 func UpdContest(ctx context.Context, c Contest) {
 	tx := instance.MustBeginTx(ctx, nil)
 	defer tx.Rollback()
-	mustNamedExecTx(tx, ctx, "UPDATE contest SET oj_id=:oj_id, cid=:cid, name=:name, start_time=:start_time, duration=:duration, max_solved=:max_solved, participants=:participants WHERE id=:id", c.dbType())
-	mustNamedExecTx(tx, ctx, "DELETE FROM contest_problem WHERE contest_id=:id", c)
-	mustNamedExecTx(tx, ctx, "DELETE FROM contest_group_rel WHERE contest_id=:id", c)
+	query := `UPDATE contest
+SET oj_id=:oj_id, cid=:cid, name=:name, start_time=:start_time,
+duration=:duration, max_solved=:max_solved, participants=:participants
+WHERE id=:id`
+	mustNamedExecTx(tx, ctx, query, c.dbType())
+	mustExecTx(tx, ctx, "DELETE FROM contest_problem WHERE contest_id=?", c.Id)
+	mustExecTx(tx, ctx, "DELETE FROM contest_group_rel WHERE contest_id=?", c.Id)
+	mustExecTx(tx, ctx, "DELETE FROM contest_team_rel WHERE contest_id=?", c.Id)
 	if len(c.Problems) > 0 {
 		for i := range c.Problems {
 			c.Problems[i].ContestId = c.Id
@@ -209,7 +232,22 @@ func UpdContest(ctx context.Context, c Contest) {
 		}
 		mustNamedExecTx(tx, ctx, addContestGroupRelSQL, groups)
 	}
+	if len(c.Teams) > 0 {
+		teams := make([]ContestTeamRel, 0)
+		for _, x := range c.Teams {
+			teams = append(teams, ContestTeamRel{
+				ContestId: c.Id,
+				TeamId:    x,
+			})
+		}
+		mustNamedExecTx(tx, ctx, addContestTeamRelSQL, teams)
+	}
 	mustCommit(tx)
+}
+
+func DelContest(ctx context.Context, contestId int) {
+	query := "DELETE FROM contest WHERE id=?"
+	mustExec(ctx, query, contestId)
 }
 
 type Overview struct {

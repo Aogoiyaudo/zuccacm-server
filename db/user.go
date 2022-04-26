@@ -8,6 +8,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type UserSimple struct {
+	Username string `json:"username" db:"username"`
+	Nickname string `json:"nickname" db:"nickname"`
+}
+
 type User struct {
 	Username string `db:"username" json:"username"`
 	Nickname string `db:"nickname" json:"nickname"`
@@ -113,7 +118,7 @@ func GetAwardsByUsername(ctx context.Context, username string) []Award {
 func GetAwardsAll(ctx context.Context, isEnable bool) []Award {
 	query := getAwardsSQL
 	if isEnable {
-		query += " AND is_enable=true"
+		query += " AND is_enable"
 	}
 	query += " ORDER BY xcpc_date"
 	ret := make([]Award, 0)

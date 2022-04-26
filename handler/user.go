@@ -93,9 +93,9 @@ func updRating(w http.ResponseWriter, r *http.Request) {
 }
 
 func refreshUserRating(w http.ResponseWriter, r *http.Request) {
-	params := decodeParam(r.Body)
-	ojId := params.getInt("oj_id")
-	tmp := params.get("username").([]interface{})
+	args := decodeParam(r.Body)
+	ojId := args.getInt("oj_id")
+	tmp := args.get("username").([]interface{})
 	var username []string
 	for _, u := range tmp {
 		username = append(username, u.(string))

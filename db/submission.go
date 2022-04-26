@@ -3,6 +3,8 @@ package db
 import (
 	"context"
 	"time"
+
+	"zuccacm-server/utils"
 )
 
 type Submission struct {
@@ -70,7 +72,12 @@ func AddSubmission(ctx context.Context, s []Submission) {
 	}
 	query := `INSERT IGNORE INTO submission(username, oj_id, sid, pid, is_accepted, create_time)
 VALUES(:username, :oj_id, :sid, :pid, :is_accepted, :create_time)`
-	mustNamedExec(ctx, query, data)
+	tx := instance.MustBeginTx(ctx, nil)
+	n := len(data)
+	for i := 0; i < n; i += 10000 {
+		mustNamedExecTx(tx, ctx, query, data[i:utils.Min(i+10000, n+1)])
+	}
+	mustCommit(tx)
 }
 
 // GetSubmissionsInContest return submissions from team_user in this contest
