@@ -250,6 +250,25 @@ func DelContest(ctx context.Context, contestId int) {
 	mustExec(ctx, query, contestId)
 }
 
+// PullContest only refresh the basic-info and problems of a specific contest
+func PullContest(ctx context.Context, c Contest) {
+	tx := instance.MustBeginTx(ctx, nil)
+	defer tx.Rollback()
+	query := `UPDATE contest
+SET oj_id=:oj_id, cid=:cid, name=:name, start_time=:start_time,
+duration=:duration, max_solved=:max_solved, participants=:participants
+WHERE id=:id`
+	mustNamedExecTx(tx, ctx, query, c.dbType())
+	mustExecTx(tx, ctx, "DELETE FROM contest_problem WHERE contest_id=?", c.Id)
+	if len(c.Problems) > 0 {
+		for i := range c.Problems {
+			c.Problems[i].ContestId = c.Id
+		}
+		mustNamedExecTx(tx, ctx, addContestProblemSQL, c.Problems)
+	}
+	mustCommit(tx)
+}
+
 type Overview struct {
 	Username string `json:"username" db:"username"`
 	Nickname string `json:"nickname" db:"nickname"`

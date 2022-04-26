@@ -22,19 +22,27 @@ func init() {
 	userRouter.HandleFunc("/upd_admin", adminOnly(updUserAdmin)).Methods("POST")
 	userRouter.HandleFunc("/upd_enable", adminOnly(updUserEnable)).Methods("POST")
 	userRouter.HandleFunc("/upd_rating", updRating).Methods("POST")
+	userRouter.HandleFunc("/upd_groups", adminOnly(updGroups)).Methods("POST")
 	userRouter.HandleFunc("/refresh_rating", refreshUserRating).Methods("POST")
 
 	userRouter.HandleFunc("/{username}", getUser).Methods("GET")
+	userRouter.HandleFunc("/{username}/profile", userSelfOrAdminOnly(getUserProfile)).Methods("GET")
 	userRouter.HandleFunc("/{username}/accounts", getUserAccounts).Methods("GET")
 	userRouter.HandleFunc("/{username}/submissions", getUserSubmissions).Methods("GET")
 	userRouter.HandleFunc("/{username}/contests", getUserContests).Methods("GET")
+	userRouter.HandleFunc("/{username}/groups", getGroupsByUser).Methods("GET")
 
 	Router.HandleFunc("/users", getUsers).Methods("GET")
+	Router.HandleFunc("/members", getMembers).Methods("GET")
 }
 
 func addUser(w http.ResponseWriter, r *http.Request) {
 	var user db.User
 	decodeParamVar(r, &user)
+	if _, err := tshirt.Parse(user.TShirt); err != nil {
+		log.WithField("err", err).Warn("T-shirt size parse failed, use empty string instead")
+		user.TShirt = ""
+	}
 	db.AddUser(r.Context(), user)
 	msgResponse(w, http.StatusOK, "添加用户成功")
 }
@@ -44,7 +52,8 @@ func updUser(w http.ResponseWriter, r *http.Request) {
 	var user db.User
 	decodeParamVar(r, &user)
 	if _, err := tshirt.Parse(user.TShirt); err != nil {
-		panic(ErrBadRequest.Wrap(err))
+		log.WithField("err", err).Warn("T-shirt size parse failed, use empty string instead")
+		user.TShirt = ""
 	}
 	db.UpdUser(r.Context(), user)
 	msgResponse(w, http.StatusOK, "修改用户信息成功")
@@ -92,6 +101,17 @@ func updRating(w http.ResponseWriter, r *http.Request) {
 	msgResponse(w, http.StatusOK, "upd user rating success")
 }
 
+func updGroups(w http.ResponseWriter, r *http.Request) {
+	var args struct {
+		Username string `json:"username"`
+		Groups   []int  `json:"groups"`
+	}
+	decodeParamVar(r, &args)
+
+	db.UpdUserGroups(r.Context(), args.Username, args.Groups)
+	msgResponse(w, http.StatusOK, "修改用户所属组成功")
+}
+
 func refreshUserRating(w http.ResponseWriter, r *http.Request) {
 	args := decodeParam(r.Body)
 	ojId := args.getInt("oj_id")
@@ -102,6 +122,41 @@ func refreshUserRating(w http.ResponseWriter, r *http.Request) {
 	}
 	mq.ExecTask(mq.Topic(ojId), mq.RatingTask(username))
 	msgResponse(w, http.StatusOK, "任务已创建：刷新Rating")
+}
+
+// getUser return user's basic info and awards
+func getUser(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Username string     `json:"username"`
+		Nickname string     `json:"nickname"`
+		CfRating int        `json:"cf_rating"`
+		IsEnable bool       `json:"is_enable"`
+		IsAdmin  bool       `json:"is_admin"`
+		Medals   [3]int     `json:"medals"`
+		Awards   []db.Award `json:"awards"`
+	}
+	username := getParamURL(r, "username")
+	ctx := r.Context()
+
+	u := db.GetUserByUsername(ctx, username)
+	data.Username = u.Username
+	data.Nickname = u.Nickname
+	data.CfRating = u.CfRating
+	data.IsEnable = u.IsEnable
+	data.IsAdmin = u.IsAdmin
+	data.Awards = db.GetAwardsByUsername(ctx, username)
+	for _, x := range data.Awards {
+		if x.Medal > 0 {
+			data.Medals[x.Medal-1]++
+		}
+	}
+	dataResponse(w, data)
+}
+
+func getUserProfile(w http.ResponseWriter, r *http.Request) {
+	username := getParamURL(r, "username")
+	user := db.GetUserByUsername(r.Context(), username)
+	dataResponse(w, user)
 }
 
 func getUserAccounts(w http.ResponseWriter, r *http.Request) {
@@ -210,37 +265,61 @@ func getUserContests(w http.ResponseWriter, r *http.Request) {
 	dataResponse(w, data)
 }
 
-// getUser return user's basic info and awards
-func getUser(w http.ResponseWriter, r *http.Request) {
-	var data struct {
-		Username string     `json:"username"`
-		Nickname string     `json:"nickname"`
-		CfRating int        `json:"cf_rating"`
-		IsEnable bool       `json:"is_enable"`
-		IsAdmin  bool       `json:"is_admin"`
-		Medals   [3]int     `json:"medals"`
-		Awards   []db.Award `json:"awards"`
-	}
-	username := getParamURL(r, "username")
+func getGroupsByUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
-	u := db.GetUserByUsername(ctx, username)
-	data.Username = u.Username
-	data.Nickname = u.Nickname
-	data.CfRating = u.CfRating
-	data.IsEnable = u.IsEnable
-	data.IsAdmin = u.IsAdmin
-	data.Awards = db.GetAwardsByUsername(ctx, username)
-	for _, x := range data.Awards {
-		if x.Medal > 0 {
-			data.Medals[x.Medal-1]++
-		}
+	username := getParamURL(r, "username")
+	groups := make([]db.TeamGroup, 0)
+	if !r.URL.Query().Has("is_grade") {
+		groups = append(groups, db.GetGroupsByUser(ctx, username, true)...)
+		groups = append(groups, db.GetGroupsByUser(ctx, username, false)...)
+	} else {
+		isGrade := getParamBool(r, "is_grade", false)
+		groups = append(groups, db.GetGroupsByUser(ctx, username, isGrade)...)
+	}
+	type group struct {
+		GroupId   int    `json:"group_id"`
+		GroupName string `json:"group_name"`
+		IsGrade   bool   `json:"is_grade"`
+	}
+	data := make([]group, 0)
+	for _, g := range groups {
+		data = append(data, group{
+			GroupId:   g.GroupId,
+			GroupName: g.GroupName,
+			IsGrade:   g.IsGrade,
+		})
 	}
 	dataResponse(w, data)
 }
 
-// getUsers get all official users if is_enable=false (default is true)
+// getUsers return all users with basic info
 func getUsers(w http.ResponseWriter, r *http.Request) {
+	isEnable := getParamBool(r, "is_enable", false)
+	isOfficial := getParamBool(r, "is_official", false)
+	users := db.GetUsers(r.Context(), isEnable, isOfficial)
+	type user struct {
+		Username string `json:"username"`
+		Nickname string `json:"nickname"`
+		CfRating int    `json:"cf_rating"`
+		IsEnable bool   `json:"is_enable"`
+		IsAdmin  bool   `json:"is_admin"`
+	}
+	data := make([]user, 0)
+	for _, u := range users {
+		data = append(data, user{
+			Username: u.Username,
+			Nickname: u.Nickname,
+			CfRating: u.CfRating,
+			IsEnable: u.IsEnable,
+			IsAdmin:  u.IsAdmin,
+		})
+	}
+	dataResponse(w, data)
+}
+
+// getMembers get all official users if is_enable=false (default is true)
+// official users are those who are in team_groups with is_grade=true
+func getMembers(w http.ResponseWriter, r *http.Request) {
 	type user struct {
 		Username string   `json:"username"`
 		Nickname string   `json:"nickname"`

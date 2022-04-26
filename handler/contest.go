@@ -15,9 +15,10 @@ var contestGroupRouter = Router.PathPrefix("/contest_group").Subrouter()
 
 func init() {
 	contestRouter.HandleFunc("/add", adminOnly(addContest)).Methods("POST")
-	contestRouter.HandleFunc("/upd", updContest).Methods("POST")
+	contestRouter.HandleFunc("/upd", adminOnly(updContest)).Methods("POST")
 	contestRouter.HandleFunc("/del", adminOnly(delContest)).Methods("POST")
 	contestRouter.HandleFunc("/refresh", adminOnly(refreshContest)).Methods("POST")
+	contestRouter.HandleFunc("/pull", pullContest).Methods("POST")
 	contestRouter.HandleFunc("/{id}", getContest).Methods("GET")
 
 	Router.HandleFunc("/contest_groups", getContestGroups).Methods("GET")
@@ -119,6 +120,7 @@ func getContest(w http.ResponseWriter, r *http.Request) {
 
 func addContest(w http.ResponseWriter, r *http.Request) {
 	var contest db.Contest
+	contest.StartTime = db.Datetime(defaultBeginTime)
 	decodeParamVar(r, &contest)
 	db.AddContest(r.Context(), contest)
 	msgResponse(w, http.StatusOK, "添加比赛成功")
@@ -126,6 +128,7 @@ func addContest(w http.ResponseWriter, r *http.Request) {
 
 func updContest(w http.ResponseWriter, r *http.Request) {
 	var contest db.Contest
+	contest.StartTime = db.Datetime(defaultBeginTime)
 	decodeParamVar(r, &contest)
 	if contest.Id == 0 {
 		panic(ErrBadRequest.WithMessage("contest.id can't be empty or zero"))
@@ -155,6 +158,16 @@ func refreshContest(w http.ResponseWriter, r *http.Request) {
 	}
 	mq.ExecTask(mq.Topic(c.OjId), mq.ContestTask(args.Id, c.Cid, args.Group))
 	msgResponse(w, http.StatusOK, "任务已创建：刷新比赛")
+}
+
+func pullContest(w http.ResponseWriter, r *http.Request) {
+	var contest db.Contest
+	decodeParamVar(r, &contest)
+	if contest.Id == 0 {
+		panic(ErrBadRequest.WithMessage("contest.id can't be empty or zero"))
+	}
+	db.PullContest(r.Context(), contest)
+	msgResponse(w, http.StatusOK, "pull contest success")
 }
 
 func getContestGroups(w http.ResponseWriter, r *http.Request) {

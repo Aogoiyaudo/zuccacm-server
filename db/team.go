@@ -22,6 +22,11 @@ type TeamGroup struct {
 	Teams     []Team `json:"teams"`
 }
 
+type TeamGroupRel struct {
+	GroupId int `json:"group_id" db:"group_id"`
+	TeamId  int `json:"team_id" db:"team_id"`
+}
+
 // GetTeams return all teams with user
 func GetTeams(ctx context.Context, isEnable bool) []Team {
 	teams := make([]Team, 0)

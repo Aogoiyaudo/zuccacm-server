@@ -143,6 +143,7 @@ func userSelfOrAdminOnly(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		var username string
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			panic(err)
@@ -150,9 +151,10 @@ func userSelfOrAdminOnly(next http.HandlerFunc) http.HandlerFunc {
 		r.Body = ioutil.NopCloser(bytes.NewReader(b))
 		p, err := gabs.ParseJSON(b)
 		if err != nil {
-			panic(ErrBadRequest.Wrap(err))
+			username = getParamURL(r, "username")
+		} else {
+			username = p.S("username").Data().(string)
 		}
-		username := p.S("username").Data().(string)
 		user := getCurrentUser(r)
 		if user.Username != username && !user.IsAdmin {
 			panic(ErrForbidden.New())

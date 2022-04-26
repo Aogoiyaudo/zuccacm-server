@@ -40,6 +40,58 @@ func GetUserByUsername(ctx context.Context, username string) (ret *User) {
 	return
 }
 
+func GetUsers(ctx context.Context, isEnable, isOfficial bool) []User {
+	query := "SELECT * FROM user"
+	if isEnable && isOfficial {
+		query += ` WHERE is_enable = true
+AND username IN
+(
+    SELECT username
+    FROM team_user_rel, team_group_rel, team_group
+    WHERE team_user_rel.team_id = team_group_rel.team_id
+    AND team_group.group_id = team_group_rel.group_id
+    AND is_grade
+)`
+	} else if isEnable {
+		query += " WHERE is_enable = true"
+	} else if isOfficial {
+		query += ` WHERE username IN
+(
+    SELECT username
+    FROM team_user_rel, team_group_rel, team_group
+    WHERE team_user_rel.team_id = team_group_rel.team_id
+    AND team_group.group_id = team_group_rel.group_id
+    AND is_grade
+)`
+	}
+	users := make([]User, 0)
+	mustSelect(ctx, &users, query)
+	return users
+}
+
+func GetGroupsByUser(ctx context.Context, username string, isGrade bool) []TeamGroup {
+	query := `SELECT * FROM team_group
+WHERE group_id IN
+(
+    SELECT group_id FROM team_user_rel, team_group_rel
+    WHERE team_user_rel.team_id = team_group_rel.team_id
+    AND username=?
+)
+AND is_grade=?`
+	groups := make([]TeamGroup, 0)
+	err := instance.SelectContext(ctx, &groups, query, username, isGrade)
+	if err == sql.ErrNoRows {
+		err = nil
+	}
+	if err != nil {
+		panic(err)
+	}
+	for i := range groups {
+		groups[i].Teams = make([]Team, 0)
+	}
+	return groups
+}
+
 func AddUser(ctx context.Context, user User) {
 	tx := instance.MustBeginTx(ctx, nil)
 	defer tx.Rollback()
@@ -98,6 +150,26 @@ func UpdUserEnable(ctx context.Context, user User) {
 	mustCommit(tx)
 }
 
+func UpdUserGroups(ctx context.Context, username string, groups []int) {
+	team := GetTeamBySelf(ctx, username)
+	teamGroups := make([]TeamGroupRel, 0)
+	for _, g := range groups {
+		teamGroups = append(teamGroups, TeamGroupRel{
+			GroupId: g,
+			TeamId:  team.Id,
+		})
+	}
+
+	tx := instance.MustBeginTx(ctx, nil)
+	query := "DELETE FROM team_group_rel WHERE team_id=?"
+	mustExecTx(tx, ctx, query, team.Id)
+	if len(teamGroups) > 0 {
+		query = "INSERT INTO team_group_rel(group_id, team_id) VALUES(:group_id, :team_id)"
+		mustNamedExecTx(tx, ctx, query, teamGroups)
+	}
+	mustCommit(tx)
+}
+
 type Award struct {
 	Username string `json:"username" db:"username"`
 	Medal    int    `json:"medal" db:"medal"`
@@ -136,9 +208,12 @@ type userGroup struct {
 // Official groups are groups which is_grade=true, such as 2018, 2019
 func GetOfficialGroups(ctx context.Context) []userGroup {
 	query := `SELECT group_id, group_name FROM team_group WHERE is_grade`
-	ret := make([]userGroup, 0)
-	mustSelect(ctx, &ret, query)
-	return ret
+	groups := make([]userGroup, 0)
+	mustSelect(ctx, &groups, query)
+	for i := range groups {
+		groups[i].Users = make([]User, 0)
+	}
+	return groups
 }
 
 // GetOfficialUsers return official groups with users
@@ -156,7 +231,7 @@ func GetOfficialUsers(ctx context.Context, isEnable bool) []userGroup {
 			Users:     make([]User, 0),
 		}
 	}
-	query := `SELECT user.username AS username, nickname, cf_rating, is_enable, is_admin, team_group.group_id AS group_id
+	query := `SELECT user.username, nickname, cf_rating, is_enable, is_admin, team_group.group_id
 FROM user, team_group_rel, team_group, team_user_rel
 WHERE user.username = team_user_rel.username AND team_user_rel.team_id = team_group_rel.team_id
 AND team_group.group_id = team_group_rel.group_id AND is_grade`
