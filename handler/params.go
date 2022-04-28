@@ -10,6 +10,8 @@ import (
 
 	"github.com/Jeffail/gabs/v2"
 	"github.com/gorilla/mux"
+
+	"zuccacm-server/db"
 )
 
 var (
@@ -23,6 +25,12 @@ func parseDate(t string) time.Time {
 		panic(ErrBadRequest.Wrap(err))
 	}
 	return ret
+}
+
+func decodePage(r *http.Request) (p db.Page) {
+	p.PageIndex = getParamInt(r, "page_index", 0)
+	p.PageSize = getParamInt(r, "page_size", 0)
+	return
 }
 
 // ----------------- params from req.Body in json format -----------------

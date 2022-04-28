@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -83,17 +84,22 @@ func GetContestGroups(ctx context.Context, isEnable bool) []ContestGroup {
 	return ret
 }
 
-// GetContests only get contests basic info (without problems)
-func GetContests(ctx context.Context, groupId int, begin, end time.Time) []Contest {
+// GetContestsByGroup only get contests basic info (without problems)
+// If group_id <= 0, return contests of any groups
+func GetContestsByGroup(ctx context.Context, groupId int, begin, end time.Time, page Page) []Contest {
 	query := `SELECT * FROM contest
 WHERE start_time BETWEEN ? AND ?
-AND id IN (SELECT contest_id FROM contest_group_rel WHERE group_id = ?)
-ORDER BY start_time DESC`
+AND id IN (SELECT contest_id FROM contest_group_rel`
+	if groupId > 0 {
+		query += fmt.Sprintf(" WHERE group_id = %d", groupId)
+	}
+	query += ")ORDER BY start_time DESC"
 	ret := make([]Contest, 0)
-	mustSelect(ctx, &ret, query, begin, end, groupId)
+	mustSelect(ctx, &ret, page.query(query), begin, end)
 	for i := range ret {
 		ret[i].Problems = make([]Problem, 0)
 		ret[i].Groups = make([]int, 0)
+		ret[i].Teams = make([]int, 0)
 	}
 	return ret
 }
@@ -165,7 +171,8 @@ func GetContestById(ctx context.Context, id int) Contest {
 	return c
 }
 
-func AddContest(ctx context.Context, c Contest) {
+// AddContest return the new Contest with Contest.Id
+func AddContest(ctx context.Context, c Contest) Contest {
 	query := `INSERT INTO contest(oj_id, cid, name, start_time, duration, max_solved, participants)
 VALUES(:oj_id, :cid, :name, :start_time, :duration, :max_solved, :participants)`
 	tx := instance.MustBeginTx(ctx, nil)
@@ -203,6 +210,7 @@ VALUES(:oj_id, :cid, :name, :start_time, :duration, :max_solved, :participants)`
 		mustNamedExecTx(tx, ctx, addContestTeamRelSQL, teams)
 	}
 	mustCommit(tx)
+	return c
 }
 
 func UpdContest(ctx context.Context, c Contest) {

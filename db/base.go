@@ -100,3 +100,16 @@ func (t Datetime) Date() string {
 func (t Datetime) Unix() int64 {
 	return time.Time(t).Unix()
 }
+
+type Page struct {
+	PageIndex int
+	PageSize  int
+}
+
+// query do nothing if (pageIndex <= 0 || pageSize <= 0)
+func (p Page) query(query string) string {
+	if p.PageIndex > 0 && p.PageSize > 0 {
+		query += fmt.Sprintf(" LIMIT %d,%d", (p.PageIndex-1)*p.PageSize, p.PageSize)
+	}
+	return query
+}

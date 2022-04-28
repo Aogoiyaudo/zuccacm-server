@@ -40,7 +40,7 @@ func GetUserByUsername(ctx context.Context, username string) (ret *User) {
 	return
 }
 
-func GetUsers(ctx context.Context, isEnable, isOfficial bool) []User {
+func GetUsers(ctx context.Context, isEnable, isOfficial bool, page Page) []User {
 	query := "SELECT * FROM user"
 	if isEnable && isOfficial {
 		query += ` WHERE is_enable = true
@@ -65,7 +65,7 @@ AND username IN
 )`
 	}
 	users := make([]User, 0)
-	mustSelect(ctx, &users, query)
+	mustSelect(ctx, &users, page.query(query))
 	return users
 }
 

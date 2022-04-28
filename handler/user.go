@@ -296,7 +296,8 @@ func getGroupsByUser(w http.ResponseWriter, r *http.Request) {
 func getUsers(w http.ResponseWriter, r *http.Request) {
 	isEnable := getParamBool(r, "is_enable", false)
 	isOfficial := getParamBool(r, "is_official", false)
-	users := db.GetUsers(r.Context(), isEnable, isOfficial)
+	page := decodePage(r)
+	users := db.GetUsers(r.Context(), isEnable, isOfficial, page)
 	type user struct {
 		Username string `json:"username"`
 		Nickname string `json:"nickname"`

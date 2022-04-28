@@ -21,6 +21,7 @@ func init() {
 	contestRouter.HandleFunc("/pull", pullContest).Methods("POST")
 	contestRouter.HandleFunc("/{id}", getContest).Methods("GET")
 
+	Router.HandleFunc("/contests", getAllContests).Methods("GET")
 	Router.HandleFunc("/contest_groups", getContestGroups).Methods("GET")
 	contestGroupRouter.HandleFunc("/{id}", getContests).Methods("GET")
 	contestGroupRouter.HandleFunc("/{id}/overview", getContestGroupOverview).Methods("GET")
@@ -122,7 +123,10 @@ func addContest(w http.ResponseWriter, r *http.Request) {
 	var contest db.Contest
 	contest.StartTime = db.Datetime(defaultBeginTime)
 	decodeParamVar(r, &contest)
-	db.AddContest(r.Context(), contest)
+	contest = db.AddContest(r.Context(), contest)
+	if contest.OjId > 0 {
+		mq.ExecTask(mq.Topic(contest.OjId), mq.ContestTask(contest.Id, contest.Cid, "5H0hEjEiuF"))
+	}
 	msgResponse(w, http.StatusOK, "添加比赛成功")
 }
 
@@ -134,6 +138,9 @@ func updContest(w http.ResponseWriter, r *http.Request) {
 		panic(ErrBadRequest.WithMessage("contest.id can't be empty or zero"))
 	}
 	db.UpdContest(r.Context(), contest)
+	if contest.OjId > 0 {
+		mq.ExecTask(mq.Topic(contest.OjId), mq.ContestTask(contest.Id, contest.Cid, "5H0hEjEiuF"))
+	}
 	msgResponse(w, http.StatusOK, "修改比赛成功")
 }
 
@@ -176,11 +183,17 @@ func getContestGroups(w http.ResponseWriter, r *http.Request) {
 	dataResponse(w, groups)
 }
 
+func getAllContests(w http.ResponseWriter, r *http.Request) {
+	page := decodePage(r)
+	dataResponse(w, db.GetContestsByGroup(r.Context(), 0, defaultBeginTime, defaultEndTime, page))
+}
+
 func getContests(w http.ResponseWriter, r *http.Request) {
 	id := getParamIntURL(r, "id")
 	begin := getParamDate(r, "begin_time", defaultBeginTime)
 	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
-	dataResponse(w, db.GetContests(r.Context(), id, begin, end))
+	page := decodePage(r)
+	dataResponse(w, db.GetContestsByGroup(r.Context(), id, begin, end, page))
 }
 
 func getContestGroupOverview(w http.ResponseWriter, r *http.Request) {
