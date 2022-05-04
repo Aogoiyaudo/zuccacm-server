@@ -11,6 +11,6 @@ func init() {
 }
 
 func getOJ(w http.ResponseWriter, r *http.Request) {
-	oj := db.GetAllOJ(r.Context())
+	oj := db.GetAllEnableOJ(r.Context())
 	dataResponse(w, oj)
 }

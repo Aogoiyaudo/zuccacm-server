@@ -48,5 +48,8 @@ func ExecTask(topic string, task *Task) {
 	if err != nil {
 		panic(err)
 	}
-	log.WithField("task", task.String()).Info("Task has been created")
+	log.WithFields(log.Fields{
+		"topic": topic,
+		"task":  task.String(),
+	}).Info("Task has been created")
 }

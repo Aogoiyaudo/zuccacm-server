@@ -20,6 +20,7 @@ func init() {
 	contestRouter.HandleFunc("/refresh", adminOnly(refreshContest)).Methods("POST")
 	contestRouter.HandleFunc("/pull", pullContest).Methods("POST")
 	contestRouter.HandleFunc("/{id}", getContest).Methods("GET")
+	contestRouter.HandleFunc("/{id}/standings", getContestStandings).Methods("GET")
 
 	Router.HandleFunc("/contests", getAllContests).Methods("GET")
 	Router.HandleFunc("/contest_groups", getContestGroups).Methods("GET")
@@ -27,8 +28,51 @@ func init() {
 	contestGroupRouter.HandleFunc("/{id}/overview", getContestGroupOverview).Methods("GET")
 }
 
-// getContest return contest info and standing
+func getContests(w http.ResponseWriter, r *http.Request) {
+	id := getParamIntURL(r, "id")
+	begin := getParamDate(r, "begin_time", defaultBeginTime)
+	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
+	page := decodePage(r)
+	dataResponse(w, db.GetContestsByGroup(r.Context(), id, begin, end, page))
+}
+
+// getContest return contest info
 func getContest(w http.ResponseWriter, r *http.Request) {
+	id := getParamIntURL(r, "id")
+	ctx := r.Context()
+	contest := db.GetContestById(ctx, id)
+	groups := db.GetGroupsByContest(ctx, id)
+	teams := db.GetTeamsInContest(ctx, id)
+	data := struct {
+		Id           int               `json:"id"`
+		OjId         int               `json:"oj_id"`
+		Cid          string            `json:"cid"`
+		Name         string            `json:"name"`
+		StartTime    db.Datetime       `json:"start_time"`
+		Duration     int               `json:"duration"`
+		MaxSolved    int               `json:"max_solved"`
+		Participants int               `json:"participants"`
+		Problems     []db.Problem      `json:"problems"`
+		Groups       []db.ContestGroup `json:"groups"`
+		Teams        []db.Team         `json:"teams"`
+	}{
+		Id:           contest.Id,
+		OjId:         contest.OjId,
+		Cid:          contest.Cid,
+		Name:         contest.Name,
+		StartTime:    contest.StartTime,
+		Duration:     contest.Duration,
+		MaxSolved:    contest.MaxSolved,
+		Participants: contest.Participants,
+		Problems:     contest.Problems,
+		Groups:       groups,
+		Teams:        teams,
+	}
+	dataResponse(w, data)
+}
+
+// getContestStandings return contest info and standing
+func getContestStandings(w http.ResponseWriter, r *http.Request) {
 	type Row struct {
 		Id             string          `json:"id"`
 		Name           string          `json:"name"`
@@ -168,12 +212,49 @@ func refreshContest(w http.ResponseWriter, r *http.Request) {
 }
 
 func pullContest(w http.ResponseWriter, r *http.Request) {
-	var contest db.Contest
-	decodeParamVar(r, &contest)
-	if contest.Id == 0 {
+	type problem struct {
+		OJ    string `json:"oj"`
+		Pid   string `json:"pid"`
+		Index string `json:"index"`
+	}
+	var arg struct {
+		Id           int         `json:"id"`
+		OJ           string      `json:"oj"`
+		Cid          string      `json:"cid"`
+		Name         string      `json:"name"`
+		StartTime    db.Datetime `json:"start_time"`
+		Duration     int         `json:"duration"`
+		MaxSolved    int         `json:"max_solved"`
+		Participants int         `json:"participants"`
+		Problems     []problem   `json:"problems"`
+	}
+	decodeParamVar(r, &arg)
+	if arg.Id == 0 {
 		panic(ErrBadRequest.WithMessage("contest.id can't be empty or zero"))
 	}
-	db.PullContest(r.Context(), contest)
+	ctx := r.Context()
+
+	oj := db.ParseOJMap(db.GetAllOJ(ctx))
+	contest := db.Contest{
+		Id:           arg.Id,
+		OjId:         oj[arg.OJ],
+		Cid:          arg.Cid,
+		Name:         arg.Name,
+		StartTime:    arg.StartTime,
+		Duration:     arg.Duration,
+		MaxSolved:    arg.MaxSolved,
+		Participants: arg.Participants,
+		Problems:     make([]db.Problem, 0),
+	}
+	for _, p := range arg.Problems {
+		contest.Problems = append(contest.Problems, db.Problem{
+			ContestId: contest.Id,
+			OjId:      oj[p.OJ],
+			Pid:       p.Pid,
+			Index:     p.Index,
+		})
+	}
+	db.PullContest(ctx, contest)
 	msgResponse(w, http.StatusOK, "pull contest success")
 }
 
@@ -186,14 +267,6 @@ func getContestGroups(w http.ResponseWriter, r *http.Request) {
 func getAllContests(w http.ResponseWriter, r *http.Request) {
 	page := decodePage(r)
 	dataResponse(w, db.GetContestsByGroup(r.Context(), 0, defaultBeginTime, defaultEndTime, page))
-}
-
-func getContests(w http.ResponseWriter, r *http.Request) {
-	id := getParamIntURL(r, "id")
-	begin := getParamDate(r, "begin_time", defaultBeginTime)
-	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
-	page := decodePage(r)
-	dataResponse(w, db.GetContestsByGroup(r.Context(), id, begin, end, page))
 }
 
 func getContestGroupOverview(w http.ResponseWriter, r *http.Request) {

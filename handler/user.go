@@ -81,19 +81,20 @@ func updUserEnable(w http.ResponseWriter, r *http.Request) {
 }
 
 func updRating(w http.ResponseWriter, r *http.Request) {
-	var args []struct {
+	args := make([]struct {
 		Account string `json:"username"`
-		OjId    int    `json:"oj_id"`
+		OJ      string `json:"oj"`
 		Rating  int    `json:"rating"`
-	}
+	}, 0)
 	decodeParamVar(r, &args)
 	ctx := r.Context()
 
+	oj := db.ParseOJMap(db.GetAllEnableOJ(ctx))
 	mp := db.GetAllAccountsMap(ctx)
 	users := make([]db.User, 0)
 	for _, arg := range args {
 		users = append(users, db.User{
-			Username: mp[db.Account{OjId: arg.OjId, Account: arg.Account}],
+			Username: mp[db.Account{OjId: oj[arg.OJ], Account: arg.Account}],
 			CfRating: arg.Rating,
 		})
 	}
@@ -168,7 +169,7 @@ func getUserAccounts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	username := getParamURL(r, "username")
 
-	oj := db.GetAllOJ(ctx)
+	oj := db.GetAllEnableOJ(ctx)
 	data := make([]account, len(oj))
 	mp := make(map[int]int)
 	for i, x := range oj {

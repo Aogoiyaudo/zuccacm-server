@@ -17,9 +17,30 @@ func init() {
 
 // addSubmissions is an api only for spiderhost
 func addSubmissions(w http.ResponseWriter, r *http.Request) {
-	var submissions []db.Submission
+	submissions := make([]struct {
+		Username   string      `json:"username"`
+		OJ         string      `json:"oj"`
+		Sid        string      `json:"sid"`
+		Pid        string      `json:"pid"`
+		IsAccepted bool        `json:"is_accepted"`
+		CreateTime db.Datetime `json:"create_time"`
+	}, 0)
 	decodeParamVar(r, &submissions)
-	db.AddSubmission(r.Context(), submissions)
+	ctx := r.Context()
+
+	oj := db.ParseOJMap(db.GetAllOJ(ctx))
+	data := make([]db.Submission, 0)
+	for _, s := range submissions {
+		data = append(data, db.Submission{
+			Username:   s.Username,
+			OjId:       oj[s.OJ],
+			Sid:        s.Sid,
+			Pid:        s.Pid,
+			IsAccepted: s.IsAccepted,
+			CreateTime: s.CreateTime,
+		})
+	}
+	db.AddSubmission(ctx, data)
 	msgResponse(w, http.StatusOK, "add submissions success")
 }
 

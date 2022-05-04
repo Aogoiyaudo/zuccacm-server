@@ -12,20 +12,33 @@ type OJ struct {
 	OjName string `json:"oj_name" db:"oj_name"`
 }
 
+func ParseOJMap(oj []OJ) map[string]int {
+	mp := make(map[string]int)
+	for _, x := range oj {
+		mp[x.OjName] = x.OjId
+	}
+	return mp
+}
+
+func GetOJByName(ojName string) (oj OJ) {
+	query := "SELECT oj_id, oj_name FROM oj WHERE oj_name = ?"
+	if err := instance.Get(&oj, query, ojName); err != nil {
+		panic(err)
+	}
+	return
+}
+
 func GetAllOJ(ctx context.Context) []OJ {
-	query := "SELECT * FROM oj WHERE oj_id > 0"
+	query := "SELECT oj_id, oj_name FROM oj WHERE oj_id > 0"
 	ret := make([]OJ, 0)
 	mustSelect(ctx, &ret, query)
 	return ret
 }
 
-// GetOjMap return map[oj.id]{oj.name}
-func GetOjMap(ctx context.Context) map[int]string {
-	oj := GetAllOJ(ctx)
-	ret := make(map[int]string)
-	for _, x := range oj {
-		ret[x.OjId] = x.OjName
-	}
+func GetAllEnableOJ(ctx context.Context) []OJ {
+	query := "SELECT oj_id, oj_name FROM oj WHERE oj_id > 0 AND is_enable"
+	ret := make([]OJ, 0)
+	mustSelect(ctx, &ret, query)
 	return ret
 }
 
@@ -73,8 +86,10 @@ VALUES(:oj_id, :username, :account) ON DUPLICATE KEY UPDATE account=VALUES(accou
 }
 
 func GetAllAccounts(ctx context.Context) []Account {
+	query := `SELECT * FROM oj_user_rel WHERE oj_id > 0
+AND oj_id IN (SELECT oj_id FROM oj WHERE is_enable)`
 	ret := make([]Account, 0)
-	mustSelect(ctx, &ret, "SELECT * FROM oj_user_rel WHERE oj_id > 0")
+	mustSelect(ctx, &ret, query)
 	return ret
 }
 
@@ -92,7 +107,7 @@ type ojAccount struct {
 func GetAllAccountsGroupByOJ(ctx context.Context) []ojAccount {
 	data := GetAllAccounts(ctx)
 
-	oj := GetAllOJ(ctx)
+	oj := GetAllEnableOJ(ctx)
 	mp := make(map[int]int)
 	ret := make([]ojAccount, 0)
 	for i, x := range oj {

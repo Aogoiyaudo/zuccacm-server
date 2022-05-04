@@ -104,6 +104,14 @@ AND id IN (SELECT contest_id FROM contest_group_rel`
 	return ret
 }
 
+func GetGroupsByContest(ctx context.Context, contestId int) []ContestGroup {
+	query := `SELECT * FROM contest_group WHERE id IN
+      (SELECT group_id FROM contest_group_rel WHERE contest_id = ?)`
+	groups := make([]ContestGroup, 0)
+	mustSelect(ctx, &groups, query, contestId)
+	return groups
+}
+
 // GetContestsByUser get contests (with problems) the user should participant in during [begin, end]
 // If groupId=0 then return contests in any groups meets the above conditions
 func GetContestsByUser(ctx context.Context, username string, begin, end time.Time, groupId int) []Contest {
