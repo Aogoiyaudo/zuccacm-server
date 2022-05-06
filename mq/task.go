@@ -1,5 +1,7 @@
 package mq
 
+import "zuccacm-server/db"
+
 func SubmissionTask(username []string, count int, group []string, groupCount int) (t *Task) {
 	t = newTask()
 	t.mustSet("submission", "task_type")
@@ -14,13 +16,15 @@ func SubmissionTask(username []string, count int, group []string, groupCount int
 	return
 }
 
-func ContestTask(id int, cid, group string) (t *Task) {
-	t = newTask()
+func ContestTask(ojId, id int, cid string) {
+	t := newTask()
 	t.mustSet("contest", "task_type")
 	t.mustSet(id, "id")
 	t.mustSet(cid, "cid")
-	t.mustSet(group, "group")
-	return
+	if ojId == db.GetOJByName("codeforces").OjId {
+		t.mustSet("5H0hEjEiuF", "group")
+	}
+	ExecTask(Topic(ojId), t)
 }
 
 func RatingTask(username []string) (t *Task) {

@@ -169,7 +169,7 @@ func addContest(w http.ResponseWriter, r *http.Request) {
 	decodeParamVar(r, &contest)
 	contest = db.AddContest(r.Context(), contest)
 	if contest.OjId > 0 {
-		mq.ExecTask(mq.Topic(contest.OjId), mq.ContestTask(contest.Id, contest.Cid, "5H0hEjEiuF"))
+		mq.ContestTask(contest.OjId, contest.Id, contest.Cid)
 	}
 	msgResponse(w, http.StatusOK, "添加比赛成功")
 }
@@ -183,7 +183,7 @@ func updContest(w http.ResponseWriter, r *http.Request) {
 	}
 	db.UpdContest(r.Context(), contest)
 	if contest.OjId > 0 {
-		mq.ExecTask(mq.Topic(contest.OjId), mq.ContestTask(contest.Id, contest.Cid, "5H0hEjEiuF"))
+		mq.ContestTask(contest.OjId, contest.Id, contest.Cid)
 	}
 	msgResponse(w, http.StatusOK, "修改比赛成功")
 }
@@ -197,17 +197,15 @@ func delContest(w http.ResponseWriter, r *http.Request) {
 
 func refreshContest(w http.ResponseWriter, r *http.Request) {
 	args := struct {
-		Id    int    `json:"id"`
-		Group string `json:"group"`
+		Id int `json:"id"`
 	}{}
-	args.Group = "5H0hEjEiuF"
 	decodeParamVar(r, &args)
 	ctx := r.Context()
 	c := db.GetContestById(ctx, args.Id)
 	if c.OjId == 0 {
 		panic(ErrBadRequest.WithMessage("oj_id can't be empty or zero"))
 	}
-	mq.ExecTask(mq.Topic(c.OjId), mq.ContestTask(args.Id, c.Cid, args.Group))
+	mq.ContestTask(c.OjId, c.Id, c.Cid)
 	msgResponse(w, http.StatusOK, "任务已创建：刷新比赛")
 }
 

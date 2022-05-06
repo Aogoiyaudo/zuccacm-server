@@ -8,46 +8,50 @@ import (
 )
 
 type Submission struct {
-	Id         int      `json:"id" db:"id"`
-	Username   string   `json:"username" db:"username"`
-	OjId       int      `json:"oj_id" db:"oj_id"`
-	Sid        string   `json:"sid" db:"sid"`
-	Pid        string   `json:"pid" db:"pid"`
-	IsAccepted bool     `json:"is_accepted" db:"is_accepted"`
-	CreateTime Datetime `json:"create_time" db:"create_time"`
+	Id          int      `json:"id" db:"id"`
+	Username    string   `json:"username" db:"username"`
+	OjId        int      `json:"oj_id" db:"oj_id"`
+	AccountOjId int      `json:"account_oj_id" db:"account_oj_id"`
+	Sid         string   `json:"sid" db:"sid"`
+	Pid         string   `json:"pid" db:"pid"`
+	IsAccepted  bool     `json:"is_accepted" db:"is_accepted"`
+	CreateTime  Datetime `json:"create_time" db:"create_time"`
 }
 
 type dbSubmission struct {
-	Id         int       `json:"id" db:"id"`
-	Username   string    `json:"username" db:"username"`
-	OjId       int       `json:"oj_id" db:"oj_id"`
-	Sid        string    `json:"sid" db:"sid"`
-	Pid        string    `json:"pid" db:"pid"`
-	IsAccepted bool      `json:"is_accepted" db:"is_accepted"`
-	CreateTime time.Time `json:"create_time" db:"create_time"`
+	Id          int       `json:"id" db:"id"`
+	Username    string    `json:"username" db:"username"`
+	OjId        int       `json:"oj_id" db:"oj_id"`
+	AccountOjId int       `json:"account_oj_id" db:"account_oj_id"`
+	Sid         string    `json:"sid" db:"sid"`
+	Pid         string    `json:"pid" db:"pid"`
+	IsAccepted  bool      `json:"is_accepted" db:"is_accepted"`
+	CreateTime  time.Time `json:"create_time" db:"create_time"`
 }
 
 func (s *Submission) dbType() *dbSubmission {
 	return &dbSubmission{
-		Id:         s.Id,
-		Username:   s.Username,
-		OjId:       s.OjId,
-		Sid:        s.Sid,
-		Pid:        s.Pid,
-		IsAccepted: s.IsAccepted,
-		CreateTime: time.Time(s.CreateTime),
+		Id:          s.Id,
+		Username:    s.Username,
+		OjId:        s.OjId,
+		AccountOjId: s.AccountOjId,
+		Sid:         s.Sid,
+		Pid:         s.Pid,
+		IsAccepted:  s.IsAccepted,
+		CreateTime:  time.Time(s.CreateTime),
 	}
 }
 
 func (s *dbSubmission) jsonType() *Submission {
 	return &Submission{
-		Id:         s.Id,
-		Username:   s.Username,
-		OjId:       s.OjId,
-		Sid:        s.Sid,
-		Pid:        s.Pid,
-		IsAccepted: s.IsAccepted,
-		CreateTime: Datetime(s.CreateTime),
+		Id:          s.Id,
+		Username:    s.Username,
+		OjId:        s.OjId,
+		AccountOjId: s.AccountOjId,
+		Sid:         s.Sid,
+		Pid:         s.Pid,
+		IsAccepted:  s.IsAccepted,
+		CreateTime:  Datetime(s.CreateTime),
 	}
 }
 
@@ -63,19 +67,20 @@ func AddSubmission(ctx context.Context, s []Submission) {
 	}
 	data := make([]dbSubmission, 0)
 	for _, si := range s {
-		k := key{si.OjId, si.Username}
+		k := key{si.AccountOjId, si.Username}
 		if _, ok := mp[k]; !ok {
 			continue
 		}
 		si.Username = mp[k]
 		data = append(data, *si.dbType())
 	}
-	query := `INSERT IGNORE INTO submission(username, oj_id, sid, pid, is_accepted, create_time)
-VALUES(:username, :oj_id, :sid, :pid, :is_accepted, :create_time)`
+	query := `INSERT IGNORE INTO submission(username, oj_id, account_oj_id, sid, pid, is_accepted, create_time)
+VALUES(:username, :oj_id, :account_oj_id, :sid, :pid, :is_accepted, :create_time)`
 	tx := instance.MustBeginTx(ctx, nil)
 	n := len(data)
-	for i := 0; i < n; i += 10000 {
-		mustNamedExecTx(tx, ctx, query, data[i:utils.Min(i+10000, n+1)])
+	groupSize := 5000
+	for i := 0; i < n; i += groupSize {
+		mustNamedExecTx(tx, ctx, query, data[i:utils.Min(i+groupSize, n)])
 	}
 	mustCommit(tx)
 }
@@ -84,8 +89,7 @@ VALUES(:username, :oj_id, :sid, :pid, :is_accepted, :create_time)`
 func GetSubmissionsInContest(ctx context.Context, contestId int) []Submission {
 	query := `
 SELECT submission.username AS username, is_accepted, create_time, submission.oj_id AS oj_id, submission.pid AS pid
-FROM submission,
-     contest_problem
+FROM submission, contest_problem
 WHERE submission.oj_id = contest_problem.oj_id
   AND submission.pid = contest_problem.pid
   AND contest_problem.contest_id = ?

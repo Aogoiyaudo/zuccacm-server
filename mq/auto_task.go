@@ -14,10 +14,14 @@ func init() {
 	runner := cron.New()
 	AddTask(runner, "*/30 * * * *", refreshSubmission)
 	AddTask(runner, "10/30 * * * *", refreshRatingCodeforces)
+	AddTask(runner, "20 4 * * *", refreshGroupSubmission)
 	runner.Start()
 }
 
 func AddTask(taskRunner *cron.Cron, spec string, cmd func()) {
+	if log.GetLevel() == log.DebugLevel {
+		return
+	}
 	if _, err := taskRunner.AddFunc(spec, cmd); err != nil {
 		log.Fatal(err)
 	}
@@ -41,11 +45,13 @@ func refreshSubmission() {
 }
 
 func refreshGroupSubmission() {
-	ExecTask(Topic(1), SubmissionTask(nil, 0, []string{"5H0hEjEiuF"}, 100000))
+	codeforces := db.GetOJByName("codeforces").OjId
+	ExecTask(Topic(codeforces), SubmissionTask(nil, 0, []string{"5H0hEjEiuF"}, 3000))
 }
 
 func refreshRatingCodeforces() {
-	refreshRating(db.GetOJByName("codeforces").OjId)
+	codeforces := db.GetOJByName("codeforces").OjId
+	refreshRating(codeforces)
 }
 
 func refreshRating(ojId int) {

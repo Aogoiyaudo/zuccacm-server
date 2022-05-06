@@ -77,7 +77,7 @@ func UpdAccount(ctx context.Context, account Account) {
 	tx := instance.MustBeginTx(ctx, nil)
 	defer tx.Rollback()
 	// clear submissions
-	query := "DELETE FROM submission WHERE username=:username AND oj_id=:oj_id"
+	query := "DELETE FROM submission WHERE username=:username AND account_oj_id=:oj_id"
 	mustNamedExecTx(tx, ctx, query, account)
 	query = `INSERT INTO oj_user_rel(oj_id, username, account)
 VALUES(:oj_id, :username, :account) ON DUPLICATE KEY UPDATE account=VALUES(account)`

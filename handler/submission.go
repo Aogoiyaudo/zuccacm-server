@@ -3,6 +3,8 @@ package handler
 import (
 	"net/http"
 
+	log "github.com/sirupsen/logrus"
+
 	"zuccacm-server/db"
 	"zuccacm-server/mq"
 )
@@ -17,29 +19,39 @@ func init() {
 
 // addSubmissions is an api only for spiderhost
 func addSubmissions(w http.ResponseWriter, r *http.Request) {
-	submissions := make([]struct {
+	type submission struct {
 		Username   string      `json:"username"`
 		OJ         string      `json:"oj"`
 		Sid        string      `json:"sid"`
 		Pid        string      `json:"pid"`
 		IsAccepted bool        `json:"is_accepted"`
 		CreateTime db.Datetime `json:"create_time"`
-	}, 0)
-	decodeParamVar(r, &submissions)
+	}
+	args := struct {
+		AccountOjId int          `json:"account_oj_id"`
+		Submissions []submission `json:"submissions"`
+	}{}
+	decodeParamVar(r, &args)
 	ctx := r.Context()
+	log.WithFields(log.Fields{
+		"account_oj_id": args.AccountOjId,
+		"submission":    args.Submissions[0],
+	}).Debug()
 
 	oj := db.ParseOJMap(db.GetAllOJ(ctx))
 	data := make([]db.Submission, 0)
-	for _, s := range submissions {
+	for _, s := range args.Submissions {
 		data = append(data, db.Submission{
-			Username:   s.Username,
-			OjId:       oj[s.OJ],
-			Sid:        s.Sid,
-			Pid:        s.Pid,
-			IsAccepted: s.IsAccepted,
-			CreateTime: s.CreateTime,
+			Username:    s.Username,
+			OjId:        oj[s.OJ],
+			AccountOjId: args.AccountOjId,
+			Sid:         s.Sid,
+			Pid:         s.Pid,
+			IsAccepted:  s.IsAccepted,
+			CreateTime:  s.CreateTime,
 		})
 	}
+	log.Debug(data[0])
 	db.AddSubmission(ctx, data)
 	msgResponse(w, http.StatusOK, "add submissions success")
 }
