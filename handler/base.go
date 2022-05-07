@@ -91,7 +91,11 @@ func baseMiddleware(next http.Handler) http.Handler {
 				case CustomError:
 					resp.Code = err.(CustomError).StatusCode()
 					resp.Msg = err.(error).Error()
-					log.WithField("stack", stackInfo()).Error(err.(CustomError).Cause())
+					if err.(CustomError).Cause() != nil {
+						log.WithField("stack", stackInfo()).Error(err.(CustomError).Cause())
+					} else {
+						log.WithField("stack", stackInfo()).Error(err)
+					}
 				default:
 					resp.Code = http.StatusInternalServerError
 					resp.Msg = "服务器内部错误"
