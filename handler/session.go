@@ -65,7 +65,7 @@ func logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func mustGetSession(r *http.Request) *sessions.Session {
-	session, err := sessionStore.Get(r, "session")
+	session, err := sessionStore.Get(r, "mainsite-session")
 	if err != nil {
 		panic(err)
 	}
