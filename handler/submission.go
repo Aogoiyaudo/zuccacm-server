@@ -38,7 +38,7 @@ func addSubmissions(w http.ResponseWriter, r *http.Request) {
 		"submission":    args.Submissions[0],
 	}).Debug()
 
-	oj := db.ParseOJMap(db.GetAllOJ(ctx))
+	oj := db.OJMapStoI(db.GetAllOJ(ctx))
 	data := make([]db.Submission, 0)
 	for _, s := range args.Submissions {
 		data = append(data, db.Submission{

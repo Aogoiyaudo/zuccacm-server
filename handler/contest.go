@@ -19,10 +19,11 @@ func init() {
 	contestRouter.HandleFunc("/del", adminOnly(delContest)).Methods("POST")
 	contestRouter.HandleFunc("/refresh", adminOnly(refreshContest)).Methods("POST")
 	contestRouter.HandleFunc("/pull", pullContest).Methods("POST")
+
+	Router.HandleFunc("/contests", getAllContests).Methods("GET")
 	contestRouter.HandleFunc("/{id}", getContest).Methods("GET")
 	contestRouter.HandleFunc("/{id}/standings", getContestStandings).Methods("GET")
 
-	Router.HandleFunc("/contests", getAllContests).Methods("GET")
 	Router.HandleFunc("/contest_groups", getContestGroups).Methods("GET")
 	contestGroupRouter.HandleFunc("/{id}", getContests).Methods("GET")
 	contestGroupRouter.HandleFunc("/{id}/overview", getContestGroupOverview).Methods("GET")
@@ -162,6 +163,10 @@ func getContestStandings(w http.ResponseWriter, r *http.Request) {
 		}
 		return data.Standings[i].Team.Solved > data.Standings[j].Team.Solved
 	})
+	oj := db.OJMapItoS(db.GetAllOJ(ctx))
+	for i, p := range contest.Problems {
+		contest.Problems[i].ProblemURL = getProblemURL(oj[p.OjId], p.Pid)
+	}
 	data.Contest = contest
 	dataResponse(w, data)
 }
@@ -235,7 +240,7 @@ func pullContest(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 
-	oj := db.ParseOJMap(db.GetAllOJ(ctx))
+	oj := db.OJMapStoI(db.GetAllOJ(ctx))
 	contest := db.Contest{
 		Id:           arg.Id,
 		OjId:         oj[arg.OJ],

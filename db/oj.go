@@ -12,7 +12,15 @@ type OJ struct {
 	OjName string `json:"oj_name" db:"oj_name"`
 }
 
-func ParseOJMap(oj []OJ) map[string]int {
+func OJMapItoS(oj []OJ) map[int]string {
+	mp := make(map[int]string)
+	for _, x := range oj {
+		mp[x.OjId] = x.OjName
+	}
+	return mp
+}
+
+func OJMapStoI(oj []OJ) map[string]int {
 	mp := make(map[string]int)
 	for _, x := range oj {
 		mp[x.OjName] = x.OjId

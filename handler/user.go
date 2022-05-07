@@ -89,7 +89,7 @@ func updRating(w http.ResponseWriter, r *http.Request) {
 	decodeParamVar(r, &args)
 	ctx := r.Context()
 
-	oj := db.ParseOJMap(db.GetAllEnableOJ(ctx))
+	oj := db.OJMapStoI(db.GetAllEnableOJ(ctx))
 	mp := db.GetAllAccountsMap(ctx)
 	users := make([]db.User, 0)
 	for _, arg := range args {

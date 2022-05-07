@@ -13,10 +13,11 @@ type ContestGroup struct {
 }
 
 type Problem struct {
-	ContestId int    `json:"contest_id" db:"contest_id"`
-	OjId      int    `json:"oj_id" db:"oj_id"`
-	Pid       string `json:"pid" db:"pid"`
-	Index     string `json:"index" db:"index"`
+	ContestId  int    `json:"contest_id" db:"contest_id"`
+	OjId       int    `json:"oj_id" db:"oj_id"`
+	Pid        string `json:"pid" db:"pid"`
+	Index      string `json:"index" db:"index"`
+	ProblemURL string `json:"problem_url,omitempty"`
 }
 
 type ContestGroupRel struct {
