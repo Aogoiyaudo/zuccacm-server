@@ -157,6 +157,9 @@ func getContestStandings(w http.ResponseWriter, r *http.Request) {
 		data.Standings = append(data.Standings, x)
 	}
 	sort.SliceStable(data.Standings, func(i, j int) bool {
+		if data.Standings[i].Team.Solved == data.Standings[j].Team.Solved {
+			return data.Standings[i].Team.Name < data.Standings[j].Team.Name
+		}
 		return data.Standings[i].Team.Solved > data.Standings[j].Team.Solved
 	})
 	data.Contest = contest
