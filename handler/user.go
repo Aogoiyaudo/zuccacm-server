@@ -93,8 +93,17 @@ func updRating(w http.ResponseWriter, r *http.Request) {
 	mp := db.GetAllAccountsMap(ctx)
 	users := make([]db.User, 0)
 	for _, arg := range args {
+		ac := db.Account{OjId: oj[arg.OJ], Account: arg.Account}
+		if _, ok := mp[ac]; !ok {
+			log.WithFields(log.Fields{
+				"account": arg.Account,
+				"oj":      arg.OJ,
+				"rating":  arg.Rating,
+			}).Error("account not found")
+			continue
+		}
 		users = append(users, db.User{
-			Username: mp[db.Account{OjId: oj[arg.OJ], Account: arg.Account}],
+			Username: mp[ac],
 			CfRating: arg.Rating,
 		})
 	}
