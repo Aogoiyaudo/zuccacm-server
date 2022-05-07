@@ -113,11 +113,6 @@ func baseMiddleware(next http.Handler) http.Handler {
 
 func loginRequired(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if log.GetLevel() == log.DebugLevel {
-			next(w, r)
-			return
-		}
-
 		getCurrentUser(r)
 		next(w, r)
 	}
@@ -125,11 +120,6 @@ func loginRequired(next http.HandlerFunc) http.HandlerFunc {
 
 func adminOnly(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if log.GetLevel() == log.DebugLevel {
-			next(w, r)
-			return
-		}
-
 		user := getCurrentUser(r)
 		if !user.IsAdmin {
 			panic(ErrForbidden.New())
@@ -142,11 +132,6 @@ func adminOnly(next http.HandlerFunc) http.HandlerFunc {
 // For example, normal users can only modify their own info
 func userSelfOrAdminOnly(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if log.GetLevel() == log.DebugLevel {
-			next(w, r)
-			return
-		}
-
 		var username string
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
