@@ -6,6 +6,8 @@ import (
 	"sort"
 
 	log "github.com/sirupsen/logrus"
+
+	"zuccacm-server/enum/errorx"
 )
 
 type UserSimple struct {
@@ -23,6 +25,15 @@ type User struct {
 	Phone    string `db:"phone" json:"phone"`
 	QQ       string `db:"qq" json:"qq"`
 	TShirt   string `db:"t_shirt" json:"t_shirt"`
+}
+
+// MustGetUser panic err when user not found
+func MustGetUser(ctx context.Context, username string) (ret *User) {
+	ret = GetUserByUsername(ctx, username)
+	if ret == nil {
+		panic(errorx.ErrNotFound.New())
+	}
+	return
 }
 
 // GetUserByUsername return nil when user not found

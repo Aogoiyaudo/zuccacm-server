@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"zuccacm-server/db"
+	"zuccacm-server/enum/errorx"
 	"zuccacm-server/mq"
 )
 
@@ -187,7 +188,7 @@ func updContest(w http.ResponseWriter, r *http.Request) {
 	contest.StartTime = db.Datetime(defaultBeginTime)
 	decodeParamVar(r, &contest)
 	if contest.Id == 0 {
-		panic(ErrBadRequest.WithMessage("contest.id can't be empty or zero"))
+		panic(errorx.ErrBadRequest.WithMessage("contest.id can't be empty or zero"))
 	}
 	db.UpdContest(r.Context(), contest)
 	if contest.OjId > 0 {
@@ -211,7 +212,7 @@ func refreshContest(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	c := db.GetContestById(ctx, args.Id)
 	if c.OjId == 0 {
-		panic(ErrBadRequest.WithMessage("oj_id can't be empty or zero"))
+		panic(errorx.ErrBadRequest.WithMessage("oj_id can't be empty or zero"))
 	}
 	mq.ContestTask(c.OjId, c.Id, c.Cid)
 	msgResponse(w, http.StatusOK, "任务已创建：刷新比赛")
@@ -236,7 +237,7 @@ func pullContest(w http.ResponseWriter, r *http.Request) {
 	}
 	decodeParamVar(r, &arg)
 	if arg.Id == 0 {
-		panic(ErrBadRequest.WithMessage("contest.id can't be empty or zero"))
+		panic(errorx.ErrBadRequest.WithMessage("contest.id can't be empty or zero"))
 	}
 	ctx := r.Context()
 

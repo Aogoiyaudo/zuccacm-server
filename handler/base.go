@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"zuccacm-server/config"
+	"zuccacm-server/enum/errorx"
 	"zuccacm-server/utils"
 )
 
@@ -85,14 +86,14 @@ func baseMiddleware(next http.Handler) http.Handler {
 			if err := recover(); err != nil {
 				resp := &Response{}
 				if err == sql.ErrNoRows {
-					err = ErrNotFound.Wrap(err.(error))
+					err = errorx.ErrNotFound.Wrap(err.(error))
 				}
 				switch err.(type) {
-				case CustomError:
-					resp.Code = err.(CustomError).StatusCode()
+				case errorx.CustomError:
+					resp.Code = err.(errorx.CustomError).StatusCode()
 					resp.Msg = err.(error).Error()
-					if err.(CustomError).Cause() != nil {
-						log.WithField("stack", stackInfo()).Error(err.(CustomError).Cause())
+					if err.(errorx.CustomError).Cause() != nil {
+						log.WithField("stack", stackInfo()).Error(err.(errorx.CustomError).Cause())
 					} else {
 						log.WithField("stack", stackInfo()).Error(err)
 					}
@@ -122,7 +123,7 @@ func adminOnly(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := getCurrentUser(r)
 		if !user.IsAdmin {
-			panic(ErrForbidden.New())
+			panic(errorx.ErrForbidden.New())
 		}
 		next(w, r)
 	}
@@ -146,7 +147,7 @@ func userSelfOrAdminOnly(next http.HandlerFunc) http.HandlerFunc {
 		}
 		user := getCurrentUser(r)
 		if user.Username != username && !user.IsAdmin {
-			panic(ErrForbidden.New())
+			panic(errorx.ErrForbidden.New())
 		}
 		next(w, r)
 	}

@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"zuccacm-server/db"
-	tshirt "zuccacm-server/enum"
+	"zuccacm-server/enum/tshirt"
 	"zuccacm-server/mq"
 	"zuccacm-server/utils"
 )
@@ -148,7 +148,7 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 	username := getParamURL(r, "username")
 	ctx := r.Context()
 
-	u := db.GetUserByUsername(ctx, username)
+	u := db.MustGetUser(ctx, username)
 	data.Username = u.Username
 	data.Nickname = u.Nickname
 	data.CfRating = u.CfRating

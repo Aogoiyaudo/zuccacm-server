@@ -10,6 +10,7 @@ import (
 
 	"zuccacm-server/config"
 	"zuccacm-server/db"
+	"zuccacm-server/enum/errorx"
 )
 
 var (
@@ -39,7 +40,7 @@ func ssoLogin(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		panic(ErrLoginFailed.New())
+		panic(errorx.ErrLoginFailed.New())
 	}
 	username := args.getString("username")
 	ctx := r.Context()
@@ -83,7 +84,7 @@ func getCurrentUser(r *http.Request) *db.User {
 	session := mustGetSession(r)
 	username := session.Values["username"]
 	if username == nil {
-		panic(ErrNotLogged.New())
+		panic(errorx.ErrNotLogged.New())
 	}
 	user := db.GetUserByUsername(r.Context(), username.(string))
 	return user
