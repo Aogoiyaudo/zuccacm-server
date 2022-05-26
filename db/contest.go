@@ -286,14 +286,14 @@ WHERE id=:id`
 	mustCommit(tx)
 }
 
-type Overview struct {
+type ContestOverview struct {
 	Username string `json:"username" db:"username"`
 	Nickname string `json:"nickname" db:"nickname"`
 	Solved   int    `json:"solved" db:"solved"`
 	Upsolved int    `json:"upsolved" db:"upsolved"`
 }
 
-func GetContestGroupOverview(ctx context.Context, id int, begin, end time.Time) []Overview {
+func GetContestGroupOverview(ctx context.Context, id int, begin, end time.Time) []ContestOverview {
 	query := `SELECT
 username, nickname,
 (
@@ -327,7 +327,7 @@ ORDER BY upsolved DESC, solved DESC, username`
 		args = append(args, begin)
 		args = append(args, end)
 	}
-	ret := make([]Overview, 0)
+	ret := make([]ContestOverview, 0)
 	mustSelect(ctx, &ret, query, args...)
 	return ret
 }

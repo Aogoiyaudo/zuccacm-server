@@ -283,9 +283,9 @@ func getContestGroupOverview(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	userGroup := db.GetOfficialUsers(ctx, false)
 	type Data struct {
-		GroupId   int           `json:"group_id"`
-		GroupName string        `json:"group_name"`
-		Users     []db.Overview `json:"users"`
+		GroupId   int                  `json:"group_id"`
+		GroupName string               `json:"group_name"`
+		Users     []db.ContestOverview `json:"users"`
 	}
 	grp := make(map[int]*Data)
 	grpId := make(map[string]int)
@@ -293,7 +293,7 @@ func getContestGroupOverview(w http.ResponseWriter, r *http.Request) {
 		grp[x.GroupId] = &Data{
 			GroupId:   x.GroupId,
 			GroupName: x.GroupName,
-			Users:     make([]db.Overview, 0),
+			Users:     make([]db.ContestOverview, 0),
 		}
 		for _, u := range x.Users {
 			grpId[u.Username] = x.GroupId

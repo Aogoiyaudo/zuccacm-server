@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -15,6 +16,8 @@ func init() {
 	submissionRouter.HandleFunc("/add", addSubmissions).Methods("POST")
 	submissionRouter.HandleFunc("/refresh_all", adminOnly(refreshAllSubmission)).Methods("POST")
 	submissionRouter.HandleFunc("/refresh", userSelfOrAdminOnly(refreshSubmission)).Methods("POST")
+
+	Router.HandleFunc("/overview", submissionOverview).Methods("GET")
 }
 
 // addSubmissions is an api only for spiderhost
@@ -85,4 +88,11 @@ func refreshSubmission(w http.ResponseWriter, r *http.Request) {
 	account := db.GetAccount(r.Context(), args.Username, args.OjId)
 	mq.ExecTask(mq.Topic(args.OjId), mq.SubmissionTask([]string{account}, args.Count, nil, 0))
 	msgResponse(w, http.StatusOK, "任务已创建：刷新提交")
+}
+
+func submissionOverview(w http.ResponseWriter, r *http.Request) {
+	begin := getParamDate(r, "begin_time", defaultBeginTime)
+	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
+	data := db.GetOverview(r.Context(), begin, end)
+	dataResponse(w, data)
 }
