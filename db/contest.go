@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 )
 
@@ -286,38 +287,112 @@ WHERE id=:id`
 	mustCommit(tx)
 }
 
-type ContestOverview struct {
+type ContestsOverviewCell struct {
 	Username string `json:"username" db:"username"`
 	Nickname string `json:"nickname" db:"nickname"`
 	Solved   int    `json:"solved" db:"solved"`
 	Upsolved int    `json:"upsolved" db:"upsolved"`
 }
 
-func GetContestGroupOverview(ctx context.Context, id int, begin, end time.Time) []ContestOverview {
-	query := `SELECT
-username, nickname,
+type ContestsOverview struct {
+	GroupId   int                    `json:"group_id"`
+	GroupName string                 `json:"group_name"`
+	Users     []ContestsOverviewCell `json:"users"`
+}
+
+func getContestsOverviewByCells(ctx context.Context, cells []ContestsOverviewCell) []ContestsOverview {
+	groups := GetOfficialUsers(ctx, true)
+	grp := make(map[int]*ContestsOverview)
+	grpId := make(map[string]int)
+	for _, x := range groups {
+		grp[x.GroupId] = &ContestsOverview{
+			GroupId:   x.GroupId,
+			GroupName: x.GroupName,
+			Users:     make([]ContestsOverviewCell, 0),
+		}
+		for _, u := range x.Users {
+			grpId[u.Username] = x.GroupId
+		}
+	}
+	for _, x := range cells {
+		i := grpId[x.Username]
+		grp[i].Users = append(grp[i].Users, x)
+	}
+	ret := make([]ContestsOverview, 0)
+	for _, v := range grp {
+		if len(v.Users) > 0 {
+			ret = append(ret, *v)
+		}
+	}
+	sort.SliceStable(ret, func(i, j int) bool {
+		return ret[i].GroupName > ret[j].GroupName
+	})
+	return ret
+}
+
+func GetContestsOverview(ctx context.Context, begin, end time.Time) []ContestsOverview {
+	query := `
+SELECT username, nickname,
 (
     SELECT COUNT(DISTINCT submission.pid, submission.oj_id)
     FROM submission, contest_problem, contest
     WHERE submission.oj_id = contest_problem.oj_id AND submission.pid = contest_problem.pid
-    AND contest.id = contest_problem.contest_id AND is_accepted=true
-    AND create_time BETWEEN start_time AND DATE_ADD(start_time, interval duration MINUTE )
-    AND user.username = submission.username
-    AND contest_id IN (SELECT contest_id FROM contest_group_rel, contest WHERE contest_id = contest.id AND group_id = ? AND start_time BETWEEN ? AND ?)
+      AND contest.id = contest_problem.contest_id AND is_accepted=true
+      AND create_time BETWEEN start_time AND DATE_ADD(start_time, interval duration MINUTE )
+      AND user.username = submission.username
+      AND contest_id IN (SELECT id FROM contest WHERE start_time BETWEEN ? AND ?)
 ) solved,
 (
     SELECT COUNT(DISTINCT submission.pid, submission.oj_id)
     FROM submission, contest_problem
     WHERE submission.oj_id = contest_problem.oj_id AND submission.pid = contest_problem.pid
-    AND is_accepted=true AND user.username = submission.username
-    AND contest_id IN (SELECT contest_id FROM contest_group_rel, contest WHERE contest_id = contest.id AND group_id = ? AND start_time BETWEEN ? AND ?)
+      AND is_accepted=true AND user.username = submission.username
+      AND contest_id IN (SELECT id FROM contest WHERE start_time BETWEEN ? AND ?)
 ) upsolved
 FROM user
-WHERE username IN
+WHERE is_enable AND username IN
 (
     SELECT username FROM team_user_rel, contest_team_rel
     WHERE team_user_rel.team_id = contest_team_rel.team_id
-    AND contest_id IN (SELECT contest_id FROM contest_group_rel, contest WHERE contest_id = contest.id AND group_id = ? AND start_time BETWEEN ? AND ?)
+      AND contest_id IN (SELECT id FROM contest WHERE start_time BETWEEN ? AND ?)
+)
+ORDER BY upsolved DESC, solved DESC, username`
+
+	var args []interface{}
+	for i := 0; i < 3; i++ {
+		args = append(args, begin)
+		args = append(args, end)
+	}
+	cells := make([]ContestsOverviewCell, 0)
+	mustSelect(ctx, &cells, query, args...)
+	return getContestsOverviewByCells(ctx, cells)
+}
+
+func GetContestsOverviewByGroup(ctx context.Context, id int, begin, end time.Time) []ContestsOverview {
+	query := `
+SELECT username, nickname,
+(
+    SELECT COUNT(DISTINCT submission.pid, submission.oj_id)
+    FROM submission, contest_problem, contest
+    WHERE submission.oj_id = contest_problem.oj_id AND submission.pid = contest_problem.pid
+      AND contest.id = contest_problem.contest_id AND is_accepted=true
+      AND create_time BETWEEN start_time AND DATE_ADD(start_time, interval duration MINUTE )
+      AND user.username = submission.username
+      AND contest_id IN (SELECT contest_id FROM contest_group_rel, contest WHERE contest_id = contest.id AND group_id = ? AND start_time BETWEEN ? AND ?)
+) solved,
+(
+    SELECT COUNT(DISTINCT submission.pid, submission.oj_id)
+    FROM submission, contest_problem
+    WHERE submission.oj_id = contest_problem.oj_id AND submission.pid = contest_problem.pid
+      AND is_accepted=true AND user.username = submission.username
+      AND contest_id IN (SELECT contest_id FROM contest_group_rel, contest WHERE contest_id = contest.id AND group_id = ? AND start_time BETWEEN ? AND ?)
+) upsolved
+FROM user
+WHERE is_enable AND username IN
+(
+    SELECT username FROM team_user_rel, contest_team_rel
+    WHERE team_user_rel.team_id = contest_team_rel.team_id
+      AND contest_id IN (SELECT contest_id FROM contest_group_rel, contest WHERE contest_id = contest.id AND group_id = ? AND start_time BETWEEN ? AND ?)
 )
 ORDER BY upsolved DESC, solved DESC, username`
 
@@ -327,7 +402,7 @@ ORDER BY upsolved DESC, solved DESC, username`
 		args = append(args, begin)
 		args = append(args, end)
 	}
-	ret := make([]ContestOverview, 0)
-	mustSelect(ctx, &ret, query, args...)
-	return ret
+	cells := make([]ContestsOverviewCell, 0)
+	mustSelect(ctx, &cells, query, args...)
+	return getContestsOverviewByCells(ctx, cells)
 }

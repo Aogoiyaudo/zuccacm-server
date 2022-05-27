@@ -22,12 +22,13 @@ func init() {
 	contestRouter.HandleFunc("/pull", pullContest).Methods("POST")
 
 	Router.HandleFunc("/contests", getAllContests).Methods("GET")
+	Router.HandleFunc("/contests/overview", getContestsOverview).Methods("GET")
 	contestRouter.HandleFunc("/{id}", getContest).Methods("GET")
 	contestRouter.HandleFunc("/{id}/standings", getContestStandings).Methods("GET")
 
 	Router.HandleFunc("/contest_groups", getContestGroups).Methods("GET")
 	contestGroupRouter.HandleFunc("/{id}", getContests).Methods("GET")
-	contestGroupRouter.HandleFunc("/{id}/overview", getContestGroupOverview).Methods("GET")
+	contestGroupRouter.HandleFunc("/{id}/overview", getContestsOverviewByGroup).Methods("GET")
 }
 
 func getContests(w http.ResponseWriter, r *http.Request) {
@@ -276,42 +277,17 @@ func getAllContests(w http.ResponseWriter, r *http.Request) {
 	dataResponse(w, db.GetContestsByGroup(r.Context(), 0, defaultBeginTime, defaultEndTime, page))
 }
 
-func getContestGroupOverview(w http.ResponseWriter, r *http.Request) {
+func getContestsOverviewByGroup(w http.ResponseWriter, r *http.Request) {
 	id := getParamIntURL(r, "id")
 	begin := getParamDate(r, "begin_time", defaultBeginTime)
 	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
-	ctx := r.Context()
-	userGroup := db.GetOfficialUsers(ctx, false)
-	type Data struct {
-		GroupId   int                  `json:"group_id"`
-		GroupName string               `json:"group_name"`
-		Users     []db.ContestOverview `json:"users"`
-	}
-	grp := make(map[int]*Data)
-	grpId := make(map[string]int)
-	for _, x := range userGroup {
-		grp[x.GroupId] = &Data{
-			GroupId:   x.GroupId,
-			GroupName: x.GroupName,
-			Users:     make([]db.ContestOverview, 0),
-		}
-		for _, u := range x.Users {
-			grpId[u.Username] = x.GroupId
-		}
-	}
-	overview := db.GetContestGroupOverview(ctx, id, begin, end)
-	for _, x := range overview {
-		i := grpId[x.Username]
-		grp[i].Users = append(grp[i].Users, x)
-	}
-	data := make([]Data, 0)
-	for _, v := range grp {
-		if len(v.Users) > 0 {
-			data = append(data, *v)
-		}
-	}
-	sort.SliceStable(data, func(i, j int) bool {
-		return data[i].GroupName > data[j].GroupName
-	})
+	data := db.GetContestsOverviewByGroup(r.Context(), id, begin, end)
+	dataResponse(w, data)
+}
+
+func getContestsOverview(w http.ResponseWriter, r *http.Request) {
+	begin := getParamDate(r, "begin_time", defaultBeginTime)
+	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
+	data := db.GetContestsOverview(r.Context(), begin, end)
 	dataResponse(w, data)
 }
