@@ -203,22 +203,31 @@ func getUserSubmissions(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	username := getParamURL(r, "username")
-	begin := getParamDateRequired(r, "begin_time")
-	end := getParamDateRequired(r, "end_time").Add(time.Hour * 24).Add(time.Second * -1)
+	begin, end := getParamDateInterval(r)
+
+	submissions := db.GetSubmissionByUsername(ctx, username, begin, end)
+	if begin == defaultBeginTime {
+		end = time.Now()
+		if len(submissions) == 0 {
+			begin = end
+		} else {
+			begin = time.Time(submissions[0].CreateTime)
+		}
+	}
+
 	n := utils.SubDays(begin, end) + 1
 	data := make([]Data, n)
 	for i := range data {
 		data[i].Date = db.Datetime(begin.AddDate(0, 0, i)).Date()
 	}
-	submissions := db.GetAcceptedSubmissionByUsername(ctx, username, begin, end)
-	for _, s := range submissions {
-		i := utils.SubDays(begin, time.Time(s.CreateTime))
-		data[i].Solved++
-	}
-	submissions = db.GetSubmissionByUsername(ctx, username, begin, end)
 	for _, s := range submissions {
 		i := utils.SubDays(begin, time.Time(s.CreateTime))
 		data[i].Submission++
+	}
+	submissions = db.GetAcceptedSubmissionByUsername(ctx, username, begin, end)
+	for _, s := range submissions {
+		i := utils.SubDays(begin, time.Time(s.CreateTime))
+		data[i].Solved++
 	}
 	dataResponse(w, data)
 }
@@ -239,8 +248,7 @@ func getUserContests(w http.ResponseWriter, r *http.Request) {
 	}{0, make([]Row, 0)}
 	ctx := r.Context()
 	username := getParamURL(r, "username")
-	begin := getParamDate(r, "begin_time", defaultBeginTime)
-	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
+	begin, end := getParamDateInterval(r)
 	groupId := getParamInt(r, "group_id", 0)
 	contests := db.GetContestsByUser(ctx, username, begin, end, groupId)
 	for _, c := range contests {

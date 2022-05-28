@@ -106,15 +106,13 @@ func getParamInt(r *http.Request, key string, defaultValue int) int {
 	return x
 }
 
-func getParamDate(r *http.Request, key string, defaultValue time.Time) time.Time {
-	if !r.URL.Query().Has(key) {
-		return defaultValue
+func getParamDateInterval(r *http.Request) (begin, end time.Time) {
+	if !r.URL.Query().Has("begin_time") || !r.URL.Query().Has("end_time") {
+		return defaultBeginTime, defaultEndTime
 	}
-	return parseDate(r.URL.Query().Get(key))
-}
-
-func getParamDateRequired(r *http.Request, key string) time.Time {
-	return parseDate(getParamRequired(r, key))
+	begin = parseDate(r.URL.Query().Get("begin_time"))
+	end = parseDate(r.URL.Query().Get("end_time")).Add(time.Hour * 24).Add(time.Second * -1)
+	return
 }
 
 func getParamBool(r *http.Request, key string, defaultValue bool) bool {

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -91,8 +90,7 @@ func refreshSubmission(w http.ResponseWriter, r *http.Request) {
 }
 
 func submissionOverview(w http.ResponseWriter, r *http.Request) {
-	begin := getParamDate(r, "begin_time", defaultBeginTime)
-	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
+	begin, end := getParamDateInterval(r)
 	data := db.GetOverview(r.Context(), begin, end)
 	dataResponse(w, data)
 }

@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
-	"time"
 
 	"zuccacm-server/db"
 	"zuccacm-server/enum/errorx"
@@ -33,8 +32,7 @@ func init() {
 
 func getContests(w http.ResponseWriter, r *http.Request) {
 	id := getParamIntURL(r, "id")
-	begin := getParamDate(r, "begin_time", defaultBeginTime)
-	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
+	begin, end := getParamDateInterval(r)
 	page := decodePage(r)
 	dataResponse(w, db.GetContestsByGroup(r.Context(), id, begin, end, page))
 }
@@ -279,15 +277,13 @@ func getAllContests(w http.ResponseWriter, r *http.Request) {
 
 func getContestsOverviewByGroup(w http.ResponseWriter, r *http.Request) {
 	id := getParamIntURL(r, "id")
-	begin := getParamDate(r, "begin_time", defaultBeginTime)
-	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
+	begin, end := getParamDateInterval(r)
 	data := db.GetContestsOverviewByGroup(r.Context(), id, begin, end)
 	dataResponse(w, data)
 }
 
 func getContestsOverview(w http.ResponseWriter, r *http.Request) {
-	begin := getParamDate(r, "begin_time", defaultBeginTime)
-	end := getParamDate(r, "end_time", defaultEndTime).Add(time.Hour * 24).Add(time.Second * -1)
+	begin, end := getParamDateInterval(r)
 	data := db.GetContestsOverview(r.Context(), begin, end)
 	dataResponse(w, data)
 }

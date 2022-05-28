@@ -115,7 +115,7 @@ GROUP BY oj_id, pid HAVING min(create_time) BETWEEN ? AND ?`
 }
 
 func GetSubmissionByUsername(ctx context.Context, username string, begin, end time.Time) []Submission {
-	query := "SELECT * FROM submission WHERE username=? AND create_time BETWEEN ? AND ?"
+	query := "SELECT * FROM submission WHERE username=? AND create_time BETWEEN ? AND ? ORDER BY create_time"
 	ret := make([]Submission, 0)
 	mustSelect(ctx, &ret, query, username, begin, end)
 	return ret
