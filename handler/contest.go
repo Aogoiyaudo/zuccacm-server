@@ -272,7 +272,8 @@ func getContestGroups(w http.ResponseWriter, r *http.Request) {
 
 func getAllContests(w http.ResponseWriter, r *http.Request) {
 	page := decodePage(r)
-	dataResponse(w, db.GetContestsByGroup(r.Context(), 0, defaultBeginTime, defaultEndTime, page))
+	begin, end := getParamDateInterval(r)
+	dataResponse(w, db.GetContestsByGroup(r.Context(), 0, begin, end, page))
 }
 
 func getContestsOverviewByGroup(w http.ResponseWriter, r *http.Request) {
