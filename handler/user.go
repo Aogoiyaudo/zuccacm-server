@@ -21,7 +21,6 @@ func init() {
 	userRouter.HandleFunc("/upd_oj", userSelfOrAdminOnly(updUserAccount)).Methods("POST")
 	userRouter.HandleFunc("/upd_admin", adminOnly(updUserAdmin)).Methods("POST")
 	userRouter.HandleFunc("/upd_enable", adminOnly(updUserEnable)).Methods("POST")
-	userRouter.HandleFunc("/upd_rating", updRating).Methods("POST")
 	userRouter.HandleFunc("/upd_groups", adminOnly(updGroups)).Methods("POST")
 	userRouter.HandleFunc("/refresh_rating", refreshUserRating).Methods("POST")
 
@@ -80,37 +79,6 @@ func updUserEnable(w http.ResponseWriter, r *http.Request) {
 	msgResponse(w, http.StatusOK, "修改用户状态成功")
 }
 
-func updRating(w http.ResponseWriter, r *http.Request) {
-	args := make([]struct {
-		Account string `json:"username"`
-		OJ      string `json:"oj"`
-		Rating  int    `json:"rating"`
-	}, 0)
-	decodeParamVar(r, &args)
-	ctx := r.Context()
-
-	oj := db.OJMapStoI(db.GetAllEnableOJ(ctx))
-	mp := db.GetAllAccountsMap(ctx)
-	users := make([]db.User, 0)
-	for _, arg := range args {
-		ac := db.Account{OjId: oj[arg.OJ], Account: arg.Account}
-		if _, ok := mp[ac]; !ok {
-			log.WithFields(log.Fields{
-				"account": arg.Account,
-				"oj":      arg.OJ,
-				"rating":  arg.Rating,
-			}).Error("account not found")
-			continue
-		}
-		users = append(users, db.User{
-			Username: mp[ac],
-			CfRating: arg.Rating,
-		})
-	}
-	db.UpdUserRating(ctx, users)
-	msgResponse(w, http.StatusOK, "upd user rating success")
-}
-
 func updGroups(w http.ResponseWriter, r *http.Request) {
 	var args struct {
 		Username string `json:"username"`
@@ -136,25 +104,32 @@ func refreshUserRating(w http.ResponseWriter, r *http.Request) {
 
 // getUser return user's basic info and awards
 func getUser(w http.ResponseWriter, r *http.Request) {
-	var data struct {
-		Username string     `json:"username"`
-		Nickname string     `json:"nickname"`
-		CfRating int        `json:"cf_rating"`
-		IsEnable bool       `json:"is_enable"`
-		IsAdmin  bool       `json:"is_admin"`
-		Medals   [3]int     `json:"medals"`
-		Awards   []db.Award `json:"awards"`
-	}
 	username := getParamURL(r, "username")
 	ctx := r.Context()
 
+	oj := db.OJMapStoI(db.GetAllOJ(ctx))
+	cf := oj["codeforces"]
 	u := db.MustGetUser(ctx, username)
-	data.Username = u.Username
-	data.Nickname = u.Nickname
-	data.CfRating = u.CfRating
-	data.IsEnable = u.IsEnable
-	data.IsAdmin = u.IsAdmin
-	data.Awards = db.GetAwardsByUsername(ctx, username)
+
+	data := struct {
+		Username    string     `json:"username"`
+		Nickname    string     `json:"nickname"`
+		CfRating    int        `json:"cf_rating"`
+		CfMaxRating int        `json:"cf_max_rating"`
+		IsEnable    bool       `json:"is_enable"`
+		IsAdmin     bool       `json:"is_admin"`
+		Medals      [3]int     `json:"medals"`
+		Awards      []db.Award `json:"awards"`
+	}{
+		Username:    u.Username,
+		Nickname:    u.Nickname,
+		CfRating:    db.GetRating(ctx, username, cf),
+		CfMaxRating: db.GetMaxRating(ctx, username, cf),
+		IsEnable:    u.IsEnable,
+		IsAdmin:     u.IsAdmin,
+		Awards:      db.GetAwardsByUsername(ctx, username),
+	}
+
 	for _, x := range data.Awards {
 		if x.Medal > 0 {
 			data.Medals[x.Medal-1]++
@@ -340,11 +315,12 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 // official users are those who are in team_groups with is_grade=true
 func getMembers(w http.ResponseWriter, r *http.Request) {
 	type user struct {
-		Username string   `json:"username"`
-		Nickname string   `json:"nickname"`
-		CfRating int      `json:"cf_rating"`
-		Awards   []string `json:"awards"`
-		Medals   [3]int   `json:"medals"`
+		Username    string   `json:"username"`
+		Nickname    string   `json:"nickname"`
+		CfRating    int      `json:"cf_rating"`
+		CfMaxRating int      `json:"cf_max_rating"`
+		Awards      []string `json:"awards"`
+		Medals      [3]int   `json:"medals"`
 	}
 	type group struct {
 		GroupId   int    `json:"group_id"`
@@ -353,6 +329,20 @@ func getMembers(w http.ResponseWriter, r *http.Request) {
 	}
 	isEnable := getParamBool(r, "is_enable", false)
 	ctx := r.Context()
+
+	oj := db.OJMapStoI(db.GetAllOJ(ctx))
+	ratings := db.GetOfficialUserRatings(ctx, oj["codeforces"])
+	type rating struct {
+		rating    int
+		maxRating int
+	}
+	cf := make(map[string]rating)
+	for _, x := range ratings {
+		cf[x.Username] = rating{
+			rating:    x.Rating,
+			maxRating: x.MaxRating,
+		}
+	}
 
 	mpUser := make(map[string]*user)
 	mpGroup := make(map[int]*group)
@@ -365,10 +355,11 @@ func getMembers(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, u := range x.Users {
 			mpUser[u.Username] = &user{
-				Username: u.Username,
-				Nickname: u.Nickname,
-				CfRating: u.CfRating,
-				Awards:   make([]string, 0),
+				Username:    u.Username,
+				Nickname:    u.Nickname,
+				CfRating:    cf[u.Username].rating,
+				CfMaxRating: cf[u.Username].maxRating,
+				Awards:      make([]string, 0),
 			}
 		}
 	}
