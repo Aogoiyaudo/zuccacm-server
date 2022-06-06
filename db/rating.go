@@ -37,7 +37,7 @@ WHERE username=? AND oj_id=? AND contest_time=
   SELECT MAX(contest_time) FROM rating
   WHERE username=? AND oj_id=? AND contest_rank > 0
 )`
-	var data struct {
+	var data []struct {
 		Rating int `db:"rating"`
 	}
 	var args []interface{}
@@ -45,13 +45,17 @@ WHERE username=? AND oj_id=? AND contest_time=
 		args = append(args, username)
 		args = append(args, ojId)
 	}
-	mustGet(ctx, &data, query, args...)
-	return data.Rating
+	mustSelect(ctx, &data, query, args...)
+	if len(data) == 0 {
+		return 0
+	} else {
+		return data[0].Rating
+	}
 }
 
 func GetMaxRating(ctx context.Context, username string, ojId int) int {
 	query := `
-SELECT MAX(rating) AS rating
+SELECT IFNULL(MAX(rating), 0) AS rating
 FROM rating
 WHERE username=? AND oj_id=?`
 	var data struct {
