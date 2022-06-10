@@ -24,7 +24,8 @@ func getTeams(w http.ResponseWriter, r *http.Request) {
 func getTeamGroups(w http.ResponseWriter, r *http.Request) {
 	isGrade := getParamBool(r, "is_grade", false)
 	isEnable := getParamBool(r, "is_enable", false)
-	groups := db.GetTeamGroupsWithTeams(r.Context(), isGrade, isEnable)
+	showEmpty := getParamBool(r, "show_empty", false)
+	groups := db.GetTeamGroupsWithTeams(r.Context(), isGrade, isEnable, showEmpty)
 	dataResponse(w, groups)
 }
 

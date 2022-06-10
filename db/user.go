@@ -80,6 +80,25 @@ AND username IN
 	return users
 }
 
+func GetUserGroup(ctx context.Context) map[string]TeamGroup {
+	query := `SELECT username, group_id, group_name FROM official_user`
+	var data []struct {
+		Username  string `db:"username"`
+		GroupId   int    `db:"group_id"`
+		GroupName string `db:"group_name"`
+	}
+	mustSelect(ctx, &data, query)
+	ret := make(map[string]TeamGroup)
+	for _, x := range data {
+		ret[x.Username] = TeamGroup{
+			GroupId:   x.GroupId,
+			GroupName: x.GroupName,
+			IsGrade:   true,
+		}
+	}
+	return ret
+}
+
 func GetGroupsByUser(ctx context.Context, username string, isGrade bool) []TeamGroup {
 	query := `SELECT * FROM team_group
 WHERE group_id IN
@@ -152,6 +171,23 @@ func UpdUserEnable(ctx context.Context, user User) {
 	defer tx.Rollback()
 	mustNamedExec(ctx, updUserEnableSQL, user)
 	mustNamedExec(ctx, updTeamEnableSQL, team)
+	mustCommit(tx)
+}
+
+func UpdUserGradeGroup(ctx context.Context, username string, group int) {
+	team := GetTeamBySelf(ctx, username)
+	tx := instance.MustBeginTx(ctx, nil)
+	defer tx.Rollback()
+	query := `
+DELETE team_group_rel
+FROM team_group,
+     team_group_rel
+WHERE team_group.group_id = team_group_rel.group_id
+  AND is_grade
+  AND team_id = ?`
+	mustExecTx(tx, ctx, query, team.Id)
+	query = `INSERT INTO team_group_rel(group_id, team_id) VALUES(?, ?)`
+	mustExecTx(tx, ctx, query, group, team.Id)
 	mustCommit(tx)
 }
 

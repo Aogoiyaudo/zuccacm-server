@@ -21,6 +21,7 @@ func init() {
 	userRouter.HandleFunc("/upd_oj", userSelfOrAdminOnly(updUserAccount)).Methods("POST")
 	userRouter.HandleFunc("/upd_admin", adminOnly(updUserAdmin)).Methods("POST")
 	userRouter.HandleFunc("/upd_enable", adminOnly(updUserEnable)).Methods("POST")
+	userRouter.HandleFunc("/upd_grade_group", adminOnly(updGradeGroup)).Methods("POST")
 	userRouter.HandleFunc("/upd_groups", adminOnly(updGroups)).Methods("POST")
 	userRouter.HandleFunc("/refresh_rating", refreshUserRating).Methods("POST")
 
@@ -77,6 +78,17 @@ func updUserEnable(w http.ResponseWriter, r *http.Request) {
 	decodeParamVar(r, &user)
 	db.UpdUserEnable(r.Context(), user)
 	msgResponse(w, http.StatusOK, "修改用户状态成功")
+}
+
+func updGradeGroup(w http.ResponseWriter, r *http.Request) {
+	var args struct {
+		Username string `json:"username"`
+		Group    int    `json:"group"`
+	}
+	decodeParamVar(r, &args)
+
+	db.UpdUserGradeGroup(r.Context(), args.Username, args.Group)
+	msgResponse(w, http.StatusOK, "修改用户所属组成功")
 }
 
 func updGroups(w http.ResponseWriter, r *http.Request) {
@@ -290,22 +302,27 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 	isEnable := getParamBool(r, "is_enable", false)
 	isOfficial := getParamBool(r, "is_official", false)
 	page := decodePage(r)
-	users := db.GetUsers(r.Context(), isEnable, isOfficial, page)
+	ctx := r.Context()
+
+	users := db.GetUsers(ctx, isEnable, isOfficial, page)
+	grade := db.GetUserGroup(ctx)
 	type user struct {
-		Username string `json:"username"`
-		Nickname string `json:"nickname"`
-		CfRating int    `json:"cf_rating"`
-		IsEnable bool   `json:"is_enable"`
-		IsAdmin  bool   `json:"is_admin"`
+		Username   string `json:"username"`
+		Nickname   string `json:"nickname"`
+		CfRating   int    `json:"cf_rating"`
+		IsEnable   bool   `json:"is_enable"`
+		IsAdmin    bool   `json:"is_admin"`
+		GradeGroup string `json:"grade_group"`
 	}
 	data := make([]user, 0)
 	for _, u := range users {
 		data = append(data, user{
-			Username: u.Username,
-			Nickname: u.Nickname,
-			CfRating: u.CfRating,
-			IsEnable: u.IsEnable,
-			IsAdmin:  u.IsAdmin,
+			Username:   u.Username,
+			Nickname:   u.Nickname,
+			CfRating:   u.CfRating,
+			IsEnable:   u.IsEnable,
+			IsAdmin:    u.IsAdmin,
+			GradeGroup: grade[u.Username].GroupName,
 		})
 	}
 	dataResponse(w, data)

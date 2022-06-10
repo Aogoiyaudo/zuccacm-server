@@ -1,6 +1,9 @@
 package db
 
-import "context"
+import (
+	"context"
+	"sort"
+)
 
 type Team struct {
 	Id       int          `json:"id" db:"id"`
@@ -76,8 +79,7 @@ func GetTeamGroups(ctx context.Context, isGrade bool) []TeamGroup {
 }
 
 // GetTeamGroupsWithTeams return groups with teams and team_users
-// empty groups will be ignored
-func GetTeamGroupsWithTeams(ctx context.Context, isGrade, isEnable bool) []TeamGroup {
+func GetTeamGroupsWithTeams(ctx context.Context, isGrade, isEnable, showEmpty bool) []TeamGroup {
 	groups := GetTeamGroups(ctx, isGrade)
 	teams := GetTeams(ctx, isEnable)
 	groupId := make(map[int]int)
@@ -110,10 +112,13 @@ AND team_id IN (SELECT id FROM team WHERE is_enable)`
 	}
 	ret := make([]TeamGroup, 0)
 	for _, x := range groups {
-		if len(x.Teams) > 0 {
+		if len(x.Teams) > 0 || showEmpty {
 			ret = append(ret, x)
 		}
 	}
+	sort.SliceStable(ret, func(i, j int) bool {
+		return ret[i].GroupName > ret[j].GroupName
+	})
 	return ret
 }
 
