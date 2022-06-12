@@ -309,7 +309,6 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 	type user struct {
 		Username   string `json:"username"`
 		Nickname   string `json:"nickname"`
-		CfRating   int    `json:"cf_rating"`
 		IsEnable   bool   `json:"is_enable"`
 		IsAdmin    bool   `json:"is_admin"`
 		GradeGroup string `json:"grade_group"`
@@ -319,7 +318,6 @@ func getUsers(w http.ResponseWriter, r *http.Request) {
 		data = append(data, user{
 			Username:   u.Username,
 			Nickname:   u.Nickname,
-			CfRating:   u.CfRating,
 			IsEnable:   u.IsEnable,
 			IsAdmin:    u.IsAdmin,
 			GradeGroup: grade[u.Username].GroupName,

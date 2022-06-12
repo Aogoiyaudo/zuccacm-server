@@ -18,7 +18,6 @@ type UserSimple struct {
 type User struct {
 	Username string `db:"username" json:"username"`
 	Nickname string `db:"nickname" json:"nickname"`
-	CfRating int    `db:"cf_rating" json:"cf_rating"`
 	IsEnable bool   `db:"is_enable" json:"is_enable"`
 	IsAdmin  bool   `db:"is_admin" json:"is_admin"`
 	IdCard   string `db:"id_card" json:"id_card"`
@@ -186,8 +185,10 @@ WHERE team_group.group_id = team_group_rel.group_id
   AND is_grade
   AND team_id = ?`
 	mustExecTx(tx, ctx, query, team.Id)
-	query = `INSERT INTO team_group_rel(group_id, team_id) VALUES(?, ?)`
-	mustExecTx(tx, ctx, query, group, team.Id)
+	if group > 0 {
+		query = `INSERT INTO team_group_rel(group_id, team_id) VALUES(?, ?)`
+		mustExecTx(tx, ctx, query, group, team.Id)
+	}
 	mustCommit(tx)
 }
 
@@ -272,7 +273,7 @@ func GetOfficialUsers(ctx context.Context, isEnable bool) []userGroup {
 			Users:     make([]User, 0),
 		}
 	}
-	query := `SELECT user.username, nickname, cf_rating, is_enable, is_admin, team_group.group_id
+	query := `SELECT user.username, nickname, is_enable, is_admin, team_group.group_id
 FROM user, team_group_rel, team_group, team_user_rel
 WHERE user.username = team_user_rel.username AND team_user_rel.team_id = team_group_rel.team_id
 AND team_group.group_id = team_group_rel.group_id AND is_grade`
@@ -283,7 +284,6 @@ AND team_group.group_id = team_group_rel.group_id AND is_grade`
 	var data []struct {
 		Username string `db:"username"`
 		Nickname string `db:"nickname"`
-		CfRating int    `db:"cf_rating"`
 		IsEnable bool   `db:"is_enable"`
 		IsAdmin  bool   `db:"is_admin"`
 		GroupId  int    `db:"group_id"`
@@ -293,7 +293,6 @@ AND team_group.group_id = team_group_rel.group_id AND is_grade`
 		grp[x.GroupId].Users = append(grp[x.GroupId].Users, User{
 			Username: x.Username,
 			Nickname: x.Nickname,
-			CfRating: x.CfRating,
 			IsEnable: x.IsEnable,
 			IsAdmin:  x.IsAdmin,
 		})
