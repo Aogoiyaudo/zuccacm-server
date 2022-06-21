@@ -14,6 +14,8 @@ func getProblemURL(oj, pid string) string {
 		return cfProblemURL(pid)
 	case "poj":
 		return pojProblemURL(pid)
+	case "nowcoder":
+		return fmt.Sprintf("https://ac.nowcoder.com/acm/problem/%s", pid)
 	default:
 		log.WithFields(log.Fields{
 			"oj":  oj,

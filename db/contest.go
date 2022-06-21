@@ -177,7 +177,13 @@ func GetContestById(ctx context.Context, id int) Contest {
 	var c Contest
 	mustGet(ctx, &c, "SELECT * FROM contest WHERE id=?", id)
 	c.Problems = make([]Problem, 0)
-	mustSelect(ctx, &c.Problems, "SELECT * FROM contest_problem WHERE contest_id = ? ORDER BY `index`", id)
+	mustSelect(ctx, &c.Problems, "SELECT * FROM contest_problem WHERE contest_id = ?", id)
+	sort.SliceStable(c.Problems, func(i, j int) bool {
+		if len(c.Problems[i].Index) == len(c.Problems[j].Index) {
+			return c.Problems[i].Index < c.Problems[j].Index
+		}
+		return len(c.Problems[i].Index) < len(c.Problems[j].Index)
+	})
 	return c
 }
 
