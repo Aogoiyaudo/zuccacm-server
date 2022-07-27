@@ -12,8 +12,8 @@ import (
 
 func init() {
 	runner := cron.New()
-	AddTask(runner, "*/30 * * * *", refreshSubmission)
-	AddTask(runner, "10/30 * * * *", refreshRatingCodeforces)
+	AddTask(runner, "40 * * * *", refreshSubmission)
+	AddTask(runner, "10 * * * *", refreshRatingCodeforces)
 	AddTask(runner, "20 4 * * *", refreshGroupSubmission)
 	runner.Start()
 }
