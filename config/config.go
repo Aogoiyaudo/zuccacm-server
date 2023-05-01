@@ -39,7 +39,7 @@ var Instance *Config
 
 const (
 	RootDir           = "zuccacm-server"
-	DefaultConfigFile = "./.zuccacm-server.yaml"
+	DefaultConfigFile = "/etc/zuccacm/zuccacm-server.yaml"
 )
 
 // Have to do this to get constants from config file
