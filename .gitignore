@@ -1,6 +1,7 @@
-.zuccacm-server.yaml
+deployment.yaml
 zuccacm-server
 .git
 .DS_Store
 go.sum
 .idea
+bin/

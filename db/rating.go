@@ -16,6 +16,9 @@ type Rating struct {
 }
 
 func UpdRating(ctx context.Context, username string, ojId int, ratings []Rating) {
+	if len(ratings) == 0 {
+		return
+	}
 	tx := instance.MustBeginTx(ctx, nil)
 	defer tx.Rollback()
 	query := `

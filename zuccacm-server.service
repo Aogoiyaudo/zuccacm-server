@@ -1,0 +1,15 @@
+[Unit]
+Description=server of zuccacm.top
+After=network.target local-fs.target
+Before=shutdown.target
+Conflicts=shutdown.target
+
+[Service]
+Type=simple
+ExecStart=/opt/zuccacm/zuccacm-server
+
+Restart=on-failure
+RestartSec=30s
+
+[Install]
+WantedBy=multi-user.target
