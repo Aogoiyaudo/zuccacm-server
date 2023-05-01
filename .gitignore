@@ -4,3 +4,4 @@ zuccacm-server
 .DS_Store
 go.sum
 .idea
+bin/
