@@ -40,6 +40,7 @@ func init() {
 			msgResponse(w, http.StatusMethodNotAllowed, "405 method not allowed")
 		}
 	})
+	fmt.Println("db connect ok")
 }
 
 func stackInfo() string {

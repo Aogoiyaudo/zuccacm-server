@@ -2,7 +2,7 @@ LogConfig:
   # Log Level, debug | info | warn | error | panic (default is info)
   Level: "info"
   # Log Path (default is Stdout)
-  Path: "/var/log/zuccacm/zuccacm-server.log"
+  Path: "Stdout"
 
 ServerConfig:
   # Port, serve port
@@ -15,10 +15,10 @@ Secret:
   SSO_URL: ""
   # DB
   DBConfig:
-    Host: ""
-    Port: ""
-    Database: ""
-    User: ""
-    Pwd: ""
+    Host: "localhost"
+    Port: "3306"
+    Database: "lashi"
+    User: "root"
+    Pwd: "123456"
   # MQ address, format like '127.0.0.1:9999'
   MessageQueue: ""

@@ -3,6 +3,7 @@ package config
 import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"runtime"
 )
 
 type Config struct {
@@ -37,20 +38,26 @@ type DBConfig struct {
 
 var Instance *Config
 
-const (
-	RootDir           = "zuccacm-server"
-	DefaultConfigFile = "/etc/zuccacm/zuccacm-server.yaml"
-)
+var RootDir = "zuccacm-server"
+var DefaultConfigFile string
 
 // Have to do this to get constants from config file
 func init() {
+	//currentPath, _ := os.Getwd()
+	//fmt.Println(currentPath)
+	sysType := runtime.GOOS
+	if sysType == "linux" {
+		DefaultConfigFile = "/etc/zuccacm/zuccacm-server.yaml"
+	}
+	if sysType == "windows" {
+		DefaultConfigFile = ".\\zuccacm-server.yaml"
+	}
 	Init(DefaultConfigFile)
 }
 
 func Init(cfgFile string) {
 	viper.SetConfigFile(cfgFile)
 	viper.AutomaticEnv()
-
 	if err := viper.ReadInConfig(); err != nil {
 		log.WithField("error", err).Fatal("Read config file failed!")
 	}

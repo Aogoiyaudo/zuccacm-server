@@ -1,0 +1,2 @@
+INFO[2023-12-21 14:12:09]  config/config.go:68           [config.Init]                 Read config file succeed!                          File=.\zuccacm-server.yaml
+INFO[2023-12-21 14:12:09]  config/config.go:72           [config.Init]                 Set log succeed                                    Level=info Path=Stdout
