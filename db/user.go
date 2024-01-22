@@ -221,7 +221,7 @@ type Award struct {
 
 // GetAwardsByUsername return awards of 1 user
 func GetAwardsByUsername(ctx context.Context, username string) []Award {
-	query := getAwardsSQL + " AND user.username=? ORDER BY xcpc_date"
+	query := getAwardsSQL + " AND user.username=? ORDER BY date"
 	ret := make([]Award, 0)
 	mustSelect(ctx, &ret, query, username)
 	return ret
@@ -234,7 +234,7 @@ func GetAwardsAll(ctx context.Context, isEnable bool) []Award {
 	if isEnable {
 		query += " AND is_enable"
 	}
-	query += " ORDER BY xcpc_date"
+	query += " ORDER BY date"
 	ret := make([]Award, 0)
 	mustSelect(ctx, &ret, query)
 	return ret

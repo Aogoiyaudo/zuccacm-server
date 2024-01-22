@@ -24,14 +24,12 @@ func init() {
 	userRouter.HandleFunc("/upd_grade_group", adminOnly(updGradeGroup)).Methods("POST")
 	userRouter.HandleFunc("/upd_groups", adminOnly(updGroups)).Methods("POST")
 	userRouter.HandleFunc("/refresh_rating", refreshUserRating).Methods("POST")
-
 	userRouter.HandleFunc("/{username}", getUser).Methods("GET")
 	userRouter.HandleFunc("/{username}/profile", userSelfOrAdminOnly(getUserProfile)).Methods("GET")
 	userRouter.HandleFunc("/{username}/accounts", getUserAccounts).Methods("GET")
 	userRouter.HandleFunc("/{username}/submissions", getUserSubmissions).Methods("GET")
 	userRouter.HandleFunc("/{username}/contests", getUserContests).Methods("GET")
 	userRouter.HandleFunc("/{username}/groups", getGroupsByUser).Methods("GET")
-
 	Router.HandleFunc("/users", getUsers).Methods("GET")
 	Router.HandleFunc("/members", getMembers).Methods("GET")
 }
@@ -183,15 +181,19 @@ func getUserAccounts(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUserSubmissions(w http.ResponseWriter, r *http.Request) {
+	type RT struct {
+		Solve  db.Submission `json:"submission"`
+		OjName string        `json:"oj_name"`
+	}
 	type Data struct {
 		Date       string `json:"date"`
 		Solved     int    `json:"solved"`
 		Submission int    `json:"submission"`
+		Solves     []RT   `json:"solves"`
 	}
 	ctx := r.Context()
 	username := getParamURL(r, "username")
 	begin, end := getParamDateInterval(r)
-
 	submissions := db.GetSubmissionByUsername(ctx, username, begin, end)
 	if begin == defaultBeginTime {
 		end = time.Now()
@@ -204,8 +206,10 @@ func getUserSubmissions(w http.ResponseWriter, r *http.Request) {
 
 	n := utils.SubDays(begin, end) + 1
 	data := make([]Data, n)
+
 	for i := range data {
 		data[i].Date = db.Datetime(begin.AddDate(0, 0, i)).Date()
+		data[i].Solves = make([]RT, 0)
 	}
 	for _, s := range submissions {
 		i := utils.SubDays(begin, time.Time(s.CreateTime))
@@ -215,6 +219,11 @@ func getUserSubmissions(w http.ResponseWriter, r *http.Request) {
 	for _, s := range submissions {
 		i := utils.SubDays(begin, time.Time(s.CreateTime))
 		data[i].Solved++
+		oj := db.GetOJById(s.OjId)
+		data[i].Solves = append(data[i].Solves, RT{
+			Solve:  s,
+			OjName: oj.OjName,
+		})
 	}
 	dataResponse(w, data)
 }

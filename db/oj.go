@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,7 +34,13 @@ func GetOJByName(ojName string) (oj OJ) {
 	}
 	return
 }
-
+func GetOJById(ojId int) (oj OJ) {
+	query := "SELECT oj_id, oj_name FROM oj WHERE oj_id = ?"
+	if err := instance.Get(&oj, query, ojId); err != nil {
+		panic(err)
+	}
+	return
+}
 func GetAllOJ(ctx context.Context) []OJ {
 	query := "SELECT oj_id, oj_name FROM oj WHERE oj_id > 0"
 	ret := make([]OJ, 0)

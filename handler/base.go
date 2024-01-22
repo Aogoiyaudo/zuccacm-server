@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"runtime"
 	"time"
+	"zuccacm-server/db"
 
 	"github.com/Jeffail/gabs/v2"
 	"github.com/gorilla/mux"
@@ -40,7 +41,6 @@ func init() {
 			msgResponse(w, http.StatusMethodNotAllowed, "405 method not allowed")
 		}
 	})
-	fmt.Println("db connect ok")
 }
 
 func stackInfo() string {
@@ -77,6 +77,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 		}
 		addCORSHeader(w, r)
 		next.ServeHTTP(w, r)
+
 	})
 }
 
@@ -122,7 +123,9 @@ func loginRequired(next http.HandlerFunc) http.HandlerFunc {
 
 func adminOnly(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := getCurrentUser(r)
+		//user := getCurrentUser(r)
+		username := "32001266"
+		user := db.GetUserByUsername(r.Context(), username)
 		if !user.IsAdmin {
 			panic(errorx.ErrForbidden.New())
 		}

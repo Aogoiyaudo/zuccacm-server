@@ -1,2 +1,37 @@
-INFO[2023-12-21 14:12:09]  config/config.go:68           [config.Init]                 Read config file succeed!                          File=.\zuccacm-server.yaml
-INFO[2023-12-21 14:12:09]  config/config.go:72           [config.Init]                 Set log succeed                                    Level=info Path=Stdout
+INFO[2024-01-22 18:13:14]  config/config.go:66           [config.Init]                 Read config file succeed!                          File=.\zuccacm-server.yaml
+INFO[2024-01-22 18:13:14]  config/config.go:70           [config.Init]                 Set log succeed                                    Level=info Path=Stdout
+INFO[2024-01-22 18:13:17]  handler/base.go:110           [handler.baseMiddleware.func1]  /session                                        
+INFO[2024-01-22 18:13:24]  handler/base.go:110           [handler.baseMiddleware.func1]  /session                                        
+INFO[2024-01-22 18:13:27]  handler/base.go:110           [handler.baseMiddleware.func1]  /members?is_enable=false                        
+INFO[2024-01-22 18:13:33]  handler/base.go:110           [handler.baseMiddleware.func1]  /session                                        
+INFO[2024-01-22 18:13:33]  handler/base.go:110           [handler.baseMiddleware.func1]  /session                                        
+ERRO[2024-01-22 18:13:33]  handler/base.go:100           [handler.baseMiddleware.func1.1]  未登录，请先登录                                       stack=
+ERROR STACK:
+handler/base.go:49        [handler.stackInfo]
+handler/base.go:100       [handler.baseMiddleware.func1.1]
+handler/session.go:84     [handler.getCurrentUser]
+handler/session.go:28     [handler.handlerCurrentUser]
+handler/base.go:113       [handler.baseMiddleware.func1]
+handler/base.go:79        [handler.corsMiddleware.func1]
+
+INFO[2024-01-22 18:13:40]  handler/base.go:110           [handler.baseMiddleware.func1]  /members?is_enable=false                        
+INFO[2024-01-22 18:14:00]  handler/base.go:110           [handler.baseMiddleware.func1]  /historys?page_index=1&page_size=20             
+INFO[2024-01-22 18:14:00]  handler/base.go:110           [handler.baseMiddleware.func1]  /historys                                       
+INFO[2024-01-22 18:14:01]  handler/base.go:110           [handler.baseMiddleware.func1]  /members?is_enable=false                        
+INFO[2024-01-22 18:14:19]  handler/base.go:110           [handler.baseMiddleware.func1]  /contest_groups                                 
+INFO[2024-01-22 18:14:19]  handler/base.go:110           [handler.baseMiddleware.func1]  /overview?begin_time=2024-01-15&end_time=2024-01-22  
+INFO[2024-01-22 18:16:06]  handler/base.go:110           [handler.baseMiddleware.func1]  /session                                        
+ERRO[2024-01-22 18:16:06]  handler/base.go:100           [handler.baseMiddleware.func1.1]  未登录，请先登录                                       stack=
+ERROR STACK:
+handler/base.go:49        [handler.stackInfo]
+handler/base.go:100       [handler.baseMiddleware.func1.1]
+handler/session.go:84     [handler.getCurrentUser]
+handler/session.go:28     [handler.handlerCurrentUser]
+handler/base.go:113       [handler.baseMiddleware.func1]
+handler/base.go:79        [handler.corsMiddleware.func1]
+
+INFO[2024-01-22 18:16:06]  handler/base.go:110           [handler.baseMiddleware.func1]  /contest_groups                                 
+INFO[2024-01-22 18:16:06]  handler/base.go:110           [handler.baseMiddleware.func1]  /overview?begin_time=2024-01-15&end_time=2024-01-22  
+INFO[2024-01-22 18:16:16]  handler/base.go:110           [handler.baseMiddleware.func1]  /login                                          
+INFO[2024-01-22 18:16:16]  handler/base.go:110           [handler.baseMiddleware.func1]  /session                                        
+INFO[2024-01-22 18:16:49]  handler/base.go:110           [handler.baseMiddleware.func1]  /members?is_enable=false                        

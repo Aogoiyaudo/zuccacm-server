@@ -7,10 +7,10 @@ import (
 
 type Team struct {
 	Id       int          `json:"id" db:"id"`
-	Name     string       `json:"name" db:"name"`
+	Name     string       `json:"team_name" db:"name"`
 	IsEnable bool         `json:"is_enable" db:"is_enable"`
 	IsSelf   bool         `json:"is_self" db:"is_self"`
-	Users    []UserSimple `json:"users"`
+	Users    []UserSimple `json:"team_members" `
 }
 
 type TeamUser struct {
@@ -183,4 +183,10 @@ AND contest_id = ?`
 		ret = append(ret, *t)
 	}
 	return ret
+}
+func UpdTeamEnable(ctx context.Context, team Team) {
+	tx := instance.MustBeginTx(ctx, nil)
+	defer tx.Rollback()
+	mustNamedExec(ctx, updTeamEnableSQL, team)
+	mustCommit(tx)
 }

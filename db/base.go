@@ -32,7 +32,6 @@ func init() {
 	db.SetConnMaxLifetime(time.Minute * 3)
 	db.SetConnMaxIdleTime(time.Minute * 3)
 	instance = db
-	fmt.Println("OKCONNECTDB")
 }
 
 func mustGet(ctx context.Context, dest interface{}, query string, args ...interface{}) {

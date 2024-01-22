@@ -73,10 +73,12 @@ func decodeParam(body io.ReadCloser) *Params {
 }
 
 func decodeParamVar(r *http.Request, to interface{}) {
-	err := json.NewDecoder(r.Body).Decode(to)
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&to)
 	if err != nil {
 		panic(errorx.ErrBadRequest.Wrap(err))
 	}
+
 }
 
 // ----------------------- params from URL.Query() -----------------------

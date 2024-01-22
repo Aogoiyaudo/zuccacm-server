@@ -43,8 +43,6 @@ var DefaultConfigFile string
 
 // Have to do this to get constants from config file
 func init() {
-	//currentPath, _ := os.Getwd()
-	//fmt.Println(currentPath)
 	sysType := runtime.GOOS
 	if sysType == "linux" {
 		DefaultConfigFile = "/etc/zuccacm/zuccacm-server.yaml"

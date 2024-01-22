@@ -106,9 +106,31 @@ ORDER BY create_time`
 }
 
 func GetAcceptedSubmissionByUsername(ctx context.Context, username string, begin, end time.Time) []Submission {
-	query := `SELECT min(create_time) AS create_time
-FROM submission WHERE is_accepted AND username=?
-GROUP BY oj_id, pid HAVING min(create_time) BETWEEN ? AND ?`
+	//query := `SELECT min(create_time) AS create_time
+	//FROM submission WHERE is_accepted AND username=?
+	//GROUP BY oj_id, pid HAVING min(create_time) BETWEEN ? AND ?`
+	//	query := `SELECT s.*
+	//FROM submission s
+	//INNER JOIN (
+	//    SELECT oj_id, pid, MIN(create_time) AS min_create_time
+	//    FROM submission
+	//    WHERE is_accepted
+	//    GROUP BY oj_id, pid
+	//    HAVING MIN(create_time) BETWEEN ? AND ?
+	//) sub
+	//ON s.oj_id = sub.oj_id AND s.pid = sub.pid AND s.create_time = sub.min_create_time
+	//WHERE s.is_accepted AND s.username=?;
+	//`
+	query := `SELECT id,username,oj_id,account_oj_id,sid,pid,is_accepted,create_time 
+FROM (
+    SELECT 
+        *,
+        ROW_NUMBER() OVER (PARTITION BY oj_id, pid ORDER BY create_time) AS rn
+    FROM submission
+    WHERE is_accepted AND username=?
+) ranked
+WHERE rn = 1 AND create_time BETWEEN ? AND ?;
+`
 	ret := make([]Submission, 0)
 	mustSelect(ctx, &ret, query, username, begin, end)
 	return ret

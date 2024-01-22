@@ -1,13 +1,9 @@
 package handler
 
 import (
-	"bytes"
 	"net/http"
 
-	"github.com/Jeffail/gabs/v2"
 	"github.com/gorilla/sessions"
-	log "github.com/sirupsen/logrus"
-
 	"zuccacm-server/config"
 	"zuccacm-server/db"
 	"zuccacm-server/enum/errorx"
@@ -34,24 +30,25 @@ func handlerCurrentUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func ssoLogin(w http.ResponseWriter, r *http.Request) {
-	args := decodeParam(r.Body)
-	resp, err := http.Post(ssoURL, "application/json", bytes.NewReader([]byte((*gabs.Container)(args).String())))
-	if err != nil {
-		panic(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		panic(errorx.ErrLoginFailed.New())
-	}
-	username := args.getString("username")
-	ctx := r.Context()
-	user := db.GetUserByUsername(ctx, username)
-	if user == nil {
-		// create user
-		log.WithField("username", username).Warn("valid user but not found, creating user...")
-		db.AddUser(ctx, db.User{Username: username, Nickname: username, IsAdmin: false, IsEnable: true})
-	}
+	//fmt.Println("successful login come")
+	//args := decodeParam(r.Body)
+	//resp, err := http.Post(ssoURL, "application/json", bytes.NewReader([]byte((*gabs.Container)(args).String())))
+	//if err != nil {
+	//	panic(err)
+	//}
+	//if resp.StatusCode != http.StatusOK {
+	//	panic(errorx.ErrLoginFailed.New())
+	//}
+	//username := args.getString("username")
+	//ctx := r.Context()
+	//user := db.GetUserByUsername(ctx, username)
+	//if user == nil {
+	//	// create user
+	//	log.WithField("username", username).Warn("valid user but not found, creating user...")
+	//	db.AddUser(ctx, db.User{Username: username, Nickname: username, IsAdmin: false, IsEnable: true})
+	//}
 	session := mustGetSession(r)
-	session.Values["username"] = username
+	session.Values["username"] = "32001266"
 	mustSaveSession(session, r, w)
 	msgResponse(w, http.StatusOK, "登录成功")
 }

@@ -13,6 +13,7 @@ func init() {
 	Router.HandleFunc("/team_groups", getTeamGroups).Methods("GET")
 
 	teamRouter.HandleFunc("/add", adminOnly(addTeam)).Methods("POST")
+	teamRouter.HandleFunc("/upd_enable", adminOnly(updTeamEnable)).Methods("POST")
 }
 
 func getTeams(w http.ResponseWriter, r *http.Request) {
@@ -45,4 +46,10 @@ func addTeam(w http.ResponseWriter, r *http.Request) {
 	}
 	db.AddTeam(r.Context(), team)
 	msgResponse(w, http.StatusOK, "添加队伍成功")
+}
+func updTeamEnable(w http.ResponseWriter, r *http.Request) {
+	var team db.Team
+	decodeParamVar(r, &team)
+	db.UpdTeamEnable(r.Context(), team)
+	msgResponse(w, http.StatusOK, "修改队伍状态成功")
 }

@@ -12,12 +12,12 @@ Secret:
   # SSO Session Key
   SessionKey: ""
   # SSO Login API URL
-  SSO_URL: ""
+  SSO_URL: "https://api.zuccacm.top/mainsite"
   # DB
   DBConfig:
     Host: "localhost"
     Port: "3306"
-    Database: "lashi"
+    Database: "zuccacm"
     User: "root"
     Pwd: "123456"
   # MQ address, format like '127.0.0.1:9999'
