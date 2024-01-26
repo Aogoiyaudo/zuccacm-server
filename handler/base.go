@@ -5,15 +5,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/Jeffail/gabs/v2"
+	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"net/http"
 	"runtime"
 	"time"
-	"zuccacm-server/db"
-
-	"github.com/Jeffail/gabs/v2"
-	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 
 	"zuccacm-server/config"
 	"zuccacm-server/enum/errorx"
@@ -123,9 +121,9 @@ func loginRequired(next http.HandlerFunc) http.HandlerFunc {
 
 func adminOnly(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//user := getCurrentUser(r)
-		username := "32001266"
-		user := db.GetUserByUsername(r.Context(), username)
+		user := getCurrentUser(r)
+		//username := "32001266"
+		//user := db.GetUserByUsername(r.Context(), username)
 		if !user.IsAdmin {
 			panic(errorx.ErrForbidden.New())
 		}

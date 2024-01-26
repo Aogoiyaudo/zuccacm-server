@@ -2,11 +2,11 @@ package handler
 
 import (
 	"net/http"
+	"zuccacm-server/enum/errorx"
 
 	"github.com/gorilla/sessions"
 	"zuccacm-server/config"
 	"zuccacm-server/db"
-	"zuccacm-server/enum/errorx"
 )
 
 var (
@@ -80,9 +80,11 @@ func mustSaveSession(session *sessions.Session, r *http.Request, w http.Response
 func getCurrentUser(r *http.Request) *db.User {
 	session := mustGetSession(r)
 	username := session.Values["username"]
+	//username := "32001266"
 	if username == nil {
 		panic(errorx.ErrNotLogged.New())
 	}
 	user := db.GetUserByUsername(r.Context(), username.(string))
+	//user := db.GetUserByUsername(r.Context(), username)
 	return user
 }

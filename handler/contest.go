@@ -27,7 +27,27 @@ func init() {
 
 	Router.HandleFunc("/contest_groups", getContestGroups).Methods("GET")
 	contestGroupRouter.HandleFunc("/{id}", getContests).Methods("GET")
+	contestGroupRouter.HandleFunc("/add", adminOnly(addContestGroup)).Methods("POST")
 	contestGroupRouter.HandleFunc("/{id}/overview", getContestsOverviewByGroup).Methods("GET")
+	contestGroupRouter.HandleFunc("/upd_enable", adminOnly(updContestGroupEnable)).Methods("POST")
+}
+func addContestGroup(w http.ResponseWriter, r *http.Request) {
+	type mm struct {
+		Name string `json:"name"`
+	}
+	var a mm
+	decodeParamVar(r, &a)
+	db.AddContestGroup(r.Context(), a.Name)
+	msgResponse(w, http.StatusOK, "增加比赛集成功")
+}
+func updContestGroupEnable(w http.ResponseWriter, r *http.Request) {
+	type mm struct {
+		Id int `json:"id"`
+	}
+	var a mm
+	decodeParamVar(r, &a)
+	db.UpdContestGroupEnable(r.Context(), a.Id)
+	msgResponse(w, http.StatusOK, "删除比赛集成功")
 }
 
 func getContests(w http.ResponseWriter, r *http.Request) {

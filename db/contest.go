@@ -85,6 +85,30 @@ func GetContestGroups(ctx context.Context, isEnable bool) []ContestGroup {
 	mustSelect(ctx, &ret, query)
 	return ret
 }
+func GetContestGroupById(ctx context.Context, id int) ContestGroup {
+	var c ContestGroup
+	mustGet(ctx, &c, "SELECT * FROM contest_group WHERE id=?", id)
+	return c
+}
+func UpdContestGroupEnable(ctx context.Context, id int) {
+	cg := GetContestGroupById(ctx, id)
+	cg.IsEnable = false
+	tx := instance.MustBeginTx(ctx, nil)
+	defer tx.Rollback()
+	mustNamedExec(ctx, updContestGroupEnableSQL, cg)
+	mustCommit(tx)
+}
+func AddContestGroup(ctx context.Context, name string) {
+	tx := instance.MustBeginTx(ctx, nil)
+	defer tx.Rollback()
+	contestgroup := ContestGroup{
+		Id:       0,
+		Name:     name,
+		IsEnable: true,
+	}
+	mustNamedExecTx(tx, ctx, addContestGroupSQL, contestgroup)
+	mustCommit(tx)
+}
 
 // GetContestsByGroup only get contests basic info (without problems)
 // If group_id <= 0, return contests of any groups

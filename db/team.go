@@ -2,6 +2,9 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	log "github.com/sirupsen/logrus"
 	"sort"
 )
 
@@ -28,6 +31,18 @@ type TeamGroup struct {
 type TeamGroupRel struct {
 	GroupId int `json:"group_id" db:"group_id"`
 	TeamId  int `json:"team_id" db:"team_id"`
+}
+
+func GetTeam(ctx context.Context, team_id string) (ret *Team, err error) {
+	ret = &Team{}
+	err = instance.GetContext(ctx, ret, "SELECT * FROM team WHERE id = ?", team_id)
+	if errors.Is(err, sql.ErrNoRows) {
+		log.WithField("team_id", team_id).Warn("team not found")
+		ret = nil
+		err = errors.New("team not found")
+		return ret, err
+	}
+	return ret, err
 }
 
 // GetTeams return all teams with user
@@ -137,6 +152,28 @@ func AddTeam(ctx context.Context, team Team) {
 	}
 	if len(users) > 0 {
 		mustNamedExecTx(tx, ctx, addTeamUserRelSQL, users)
+	}
+	mustCommit(tx)
+}
+func AddTeamGroup(ctx context.Context, teamGroup TeamGroup) {
+	tx := instance.MustBeginTx(ctx, nil)
+	defer tx.Rollback()
+	res := mustNamedExecTx(tx, ctx, addTeamGroupSQL, teamGroup)
+	id, err := res.LastInsertId()
+	if err != nil {
+		panic(err)
+	}
+	teamGroup.GroupId = int(id)
+	type Mm struct {
+		GroupId int `db:"group_id"`
+		TeamId  int `db:"team_id"`
+	}
+	data := make([]Mm, 0)
+	for _, team := range teamGroup.Teams {
+		data = append(data, Mm{int(id), team.Id})
+	}
+	if len(data) > 0 {
+		mustNamedExecTx(tx, ctx, addTeamGroupRelSQL, data)
 	}
 	mustCommit(tx)
 }
