@@ -34,7 +34,7 @@ func MustGetHistory(ctx context.Context, id int) (ret *History) {
 }
 func GetHistorys(ctx context.Context, isEnable bool) []History {
 	historys := make([]History, 0)
-	query := "SELECT * FROM History"
+	query := "SELECT * FROM history"
 	if isEnable {
 		query += " WHERE is_enable=true"
 	}

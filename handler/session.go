@@ -1,6 +1,10 @@
 package handler
 
 import (
+	"bytes"
+	"fmt"
+	"github.com/Jeffail/gabs/v2"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"zuccacm-server/enum/errorx"
 
@@ -30,25 +34,24 @@ func handlerCurrentUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func ssoLogin(w http.ResponseWriter, r *http.Request) {
-	//fmt.Println("successful login come")
-	//args := decodeParam(r.Body)
-	//resp, err := http.Post(ssoURL, "application/json", bytes.NewReader([]byte((*gabs.Container)(args).String())))
-	//if err != nil {
-	//	panic(err)
-	//}
-	//if resp.StatusCode != http.StatusOK {
-	//	panic(errorx.ErrLoginFailed.New())
-	//}
-	//username := args.getString("username")
-	//ctx := r.Context()
-	//user := db.GetUserByUsername(ctx, username)
-	//if user == nil {
-	//	// create user
-	//	log.WithField("username", username).Warn("valid user but not found, creating user...")
-	//	db.AddUser(ctx, db.User{Username: username, Nickname: username, IsAdmin: false, IsEnable: true})
-	//}
+	args := decodeParam(r.Body)
+	resp, err := http.Post(ssoURL, "application/json", bytes.NewReader([]byte((*gabs.Container)(args).String())))
+	if err != nil {
+		panic(err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		panic(errorx.ErrLoginFailed.New())
+	}
+	username := args.getString("username")
+	ctx := r.Context()
+	user := db.GetUserByUsername(ctx, username)
+	if user == nil {
+		// create user
+		log.WithField("username", username).Warn("valid user but not found, creating user...")
+		db.AddUser(ctx, db.User{Username: username, Nickname: username, IsAdmin: false, IsEnable: true})
+	}
 	session := mustGetSession(r)
-	session.Values["username"] = "32001266"
+	session.Values["username"] = username
 	mustSaveSession(session, r, w)
 	msgResponse(w, http.StatusOK, "登录成功")
 }
@@ -63,8 +66,11 @@ func logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func mustGetSession(r *http.Request) *sessions.Session {
+	fmt.Println("OJBK")
 	session, err := sessionStore.Get(r, "mainsite-session")
 	if err != nil {
+		fmt.Println("ERROR=")
+		fmt.Println(err)
 		panic(err)
 	}
 	return session
@@ -80,11 +86,9 @@ func mustSaveSession(session *sessions.Session, r *http.Request, w http.Response
 func getCurrentUser(r *http.Request) *db.User {
 	session := mustGetSession(r)
 	username := session.Values["username"]
-	//username := "32001266"
 	if username == nil {
 		panic(errorx.ErrNotLogged.New())
 	}
 	user := db.GetUserByUsername(r.Context(), username.(string))
-	//user := db.GetUserByUsername(r.Context(), username)
 	return user
 }

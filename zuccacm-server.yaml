@@ -10,9 +10,9 @@ ServerConfig:
 
 Secret:
   # SSO Session Key
-  SessionKey: ""
+  SessionKey: "mainsite-session"
   # SSO Login API URL
-  SSO_URL: "https://api.zuccacm.top/mainsite"
+  SSO_URL: "https://api.zuccacm.top/sso/v1/session"
   # DB
   DBConfig:
     Host: "localhost"

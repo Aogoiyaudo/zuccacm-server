@@ -25,6 +25,7 @@ type Secret struct {
 	SessionKey string
 	SSO_URL    string
 	DBConfig
+	OSS
 	MessageQueue string
 }
 
@@ -34,6 +35,11 @@ type DBConfig struct {
 	Database string
 	User     string
 	Pwd      string
+}
+type OSS struct {
+	Id     string
+	Key    string
+	Bucket string
 }
 
 var Instance *Config
