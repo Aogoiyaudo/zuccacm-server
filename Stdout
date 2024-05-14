@@ -1,24 +1,2 @@
-INFO[2024-01-28 18:13:30]  config/config.go:72           [config.Init]                 Read config file succeed!                          File=.\zuccacm-server.yaml
-INFO[2024-01-28 18:13:30]  config/config.go:76           [config.Init]                 Set log succeed                                    Level=info Path=Stdout
-INFO[2024-01-28 18:13:37]  handler/base.go:108           [handler.baseMiddleware.func1]  /session                                        
-ERRO[2024-01-28 18:13:37]  handler/base.go:103           [handler.baseMiddleware.func1.1]  securecookie: the value is not valid           stack=
-ERROR STACK:
-handler/base.go:47        [handler.stackInfo]
-handler/base.go:103       [handler.baseMiddleware.func1.1]
-handler/session.go:74     [handler.mustGetSession]
-handler/session.go:87     [handler.getCurrentUser]
-handler/session.go:32     [handler.handlerCurrentUser]
-handler/base.go:111       [handler.baseMiddleware.func1]
-handler/base.go:77        [handler.corsMiddleware.func1]
-
-INFO[2024-01-28 18:13:52]  handler/base.go:108           [handler.baseMiddleware.func1]  /session                                        
-ERRO[2024-01-28 18:13:52]  handler/base.go:103           [handler.baseMiddleware.func1.1]  securecookie: the value is not valid           stack=
-ERROR STACK:
-handler/base.go:47        [handler.stackInfo]
-handler/base.go:103       [handler.baseMiddleware.func1.1]
-handler/session.go:74     [handler.mustGetSession]
-handler/session.go:87     [handler.getCurrentUser]
-handler/session.go:32     [handler.handlerCurrentUser]
-handler/base.go:111       [handler.baseMiddleware.func1]
-handler/base.go:77        [handler.corsMiddleware.func1]
-
+INFO[2024-05-15 00:23:45]  config/config.go:72           [config.Init]                 Read config file succeed!                          File=.\zuccacm-server.yaml
+INFO[2024-05-15 00:23:45]  config/config.go:76           [config.Init]                 Set log succeed                                    Level=info Path=Stdout

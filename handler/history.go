@@ -45,11 +45,11 @@ func addHistory(w http.ResponseWriter, r *http.Request) {
 func updHistory(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var args struct {
-		Id string `json:"id"`
+		Id int    `json:"id"`
 		Md string `json:"md"`
 	}
 	decodeParamVar(r, &args)
-	di, _ := strconv.Atoi(args.Id)
+	di := args.Id
 	db.UpdHistory(ctx, di, args.Md)
 	msgResponse(w, http.StatusOK, "更新信息成功")
 }

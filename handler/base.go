@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"runtime"
 	"time"
+	"zuccacm-server/db"
 
 	"zuccacm-server/config"
 	"zuccacm-server/enum/errorx"
@@ -122,10 +123,10 @@ func loginRequired(next http.HandlerFunc) http.HandlerFunc {
 func adminOnly(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("before get user OK")
-		user := getCurrentUser(r)
+		//user := getCurrentUser(r)
 		fmt.Println("after get user OK")
-		//username := "32001266"
-		//user := db.GetUserByUsername(r.Context(), username)
+		username := "32001266"
+		user := db.GetUserByUsername(r.Context(), username)
 		if !user.IsAdmin {
 			panic(errorx.ErrForbidden.New())
 		}

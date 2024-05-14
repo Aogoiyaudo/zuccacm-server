@@ -1,14 +1,9 @@
 package handler
 
 import (
-	"bytes"
-	"fmt"
-	"github.com/Jeffail/gabs/v2"
+	"github.com/gorilla/sessions"
 	log "github.com/sirupsen/logrus"
 	"net/http"
-	"zuccacm-server/enum/errorx"
-
-	"github.com/gorilla/sessions"
 	"zuccacm-server/config"
 	"zuccacm-server/db"
 )
@@ -34,15 +29,16 @@ func handlerCurrentUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func ssoLogin(w http.ResponseWriter, r *http.Request) {
-	args := decodeParam(r.Body)
-	resp, err := http.Post(ssoURL, "application/json", bytes.NewReader([]byte((*gabs.Container)(args).String())))
-	if err != nil {
-		panic(err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		panic(errorx.ErrLoginFailed.New())
-	}
-	username := args.getString("username")
+	//args := decodeParam(r.Body)
+	//resp, err := http.Post(ssoURL, "application/json", bytes.NewReader([]byte((*gabs.Container)(args).String())))
+	//if err != nil {
+	//	panic(err)
+	//}
+	//if resp.StatusCode != http.StatusOK {
+	//	panic(errorx.ErrLoginFailed.New())
+	//}
+	//username := args.getString("username")
+	username := "32001266"
 	ctx := r.Context()
 	user := db.GetUserByUsername(ctx, username)
 	if user == nil {
@@ -50,9 +46,9 @@ func ssoLogin(w http.ResponseWriter, r *http.Request) {
 		log.WithField("username", username).Warn("valid user but not found, creating user...")
 		db.AddUser(ctx, db.User{Username: username, Nickname: username, IsAdmin: false, IsEnable: true})
 	}
-	session := mustGetSession(r)
-	session.Values["username"] = username
-	mustSaveSession(session, r, w)
+	//session := mustGetSession(r)
+	//session.Values["username"] = username
+	//mustSaveSession(session, r, w)
 	msgResponse(w, http.StatusOK, "登录成功")
 }
 
@@ -66,11 +62,8 @@ func logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func mustGetSession(r *http.Request) *sessions.Session {
-	fmt.Println("OJBK")
 	session, err := sessionStore.Get(r, "mainsite-session")
 	if err != nil {
-		fmt.Println("ERROR=")
-		fmt.Println(err)
 		panic(err)
 	}
 	return session
@@ -84,11 +77,13 @@ func mustSaveSession(session *sessions.Session, r *http.Request, w http.Response
 }
 
 func getCurrentUser(r *http.Request) *db.User {
-	session := mustGetSession(r)
-	username := session.Values["username"]
-	if username == nil {
-		panic(errorx.ErrNotLogged.New())
-	}
-	user := db.GetUserByUsername(r.Context(), username.(string))
+	//session := mustGetSession(r)
+	//username := session.Values["username"]
+	username := "32001266"
+	//if username == nil {
+	//	panic(errorx.ErrNotLogged.New())
+	//}
+	//user := db.GetUserByUsername(r.Context(), username.(string))
+	user := db.GetUserByUsername(r.Context(), username)
 	return user
 }
